@@ -314,3 +314,23 @@ def test_notdef_and_unmapped_glyph_boundary(style_name, font_file, ref_candidate
     assert unmapped_cp not in font_cmap, (
         f"[{style_name}] Unexpected mapping for unmapped codepoint U+{unmapped_cp:05X}"
     )
+
+
+def test_otc_collection_integrity():
+    """Verify that NimbusMatch.otc exists and contains all 4 font faces with 2048 UPEM."""
+    otc_path = DIST_DIR / "NimbusMatch.otc"
+    if not otc_path.exists():
+        pytest.skip("NimbusMatch.otc not found in dist/")
+
+    from fontTools.ttLib import TTCollection
+
+    ttc = TTCollection(otc_path)
+    assert len(ttc.fonts) == 4, (
+        f"Expected 4 fonts inside NimbusMatch.otc, found {len(ttc.fonts)}"
+    )
+
+    for font in ttc.fonts:
+        assert font["head"].unitsPerEm == 2048
+        name_table = font["name"]
+        family_names = [r.toUnicode() for r in name_table.names if r.nameID in (1, 16)]
+        assert any("Nimbus Match" in n for n in family_names)

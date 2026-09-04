@@ -64,6 +64,12 @@ jobs:
 
             **Nimbus Match** is a free Times New Roman metric-compatible font family combining the visual letterforms of **Nimbus Roman** with the exact layout metrics and kerning of **Liberation Serif / Times New Roman**.
 
+            > [!TIP]
+            > **To install all 4 font variants in 1 click**, simply download **`NimbusMatch.otc`**!
+            > - **Windows**: Right-click `NimbusMatch.otc` -> click **Install** (or *Install for all users*).
+            > - **macOS**: Double-click `NimbusMatch.otc` -> click **Install Font** in Font Book.
+            > - **Linux**: Double-click `NimbusMatch.otc` -> click **Install** in GNOME Fonts / KDE Font View (or copy to `~/.local/share/fonts/`).
+
             ### Release Details
             - **Upstream Liberation Serif Version**: `${{ steps.build.outputs.liberation_version }}`
             - **Upstream URW Base35 (Nimbus Roman) Version**: `${{ steps.build.outputs.nimbus_version }}`
@@ -71,12 +77,16 @@ jobs:
             - **Supported Scripts**: Latin, Greek, Cyrillic, Punctuation & Symbols
 
             ### Release Assets
+            - `NimbusMatch.otc` (1-Click OpenType Collection bundling all 4 styles for Windows, macOS, Linux)
+            - `NimbusMatch.zip` (Bundle containing all 4 font OTF files)
             - `NimbusMatch-Regular.otf`
             - `NimbusMatch-Bold.otf`
             - `NimbusMatch-Italic.otf`
             - `NimbusMatch-BoldItalic.otf`
             - `nimbus_match_comparison.png` (Side-by-side & overlay visual comparison)
           files: |
+            dist/NimbusMatch.otc
+            dist/NimbusMatch.zip
             dist/NimbusMatch-Regular.otf
             dist/NimbusMatch-Bold.otf
             dist/NimbusMatch-Italic.otf

@@ -14,7 +14,10 @@ import json
 import os
 import tarfile
 import urllib.request
+import zipfile
 from pathlib import Path
+
+from fontTools.ttLib import TTCollection, TTFont
 
 from build_nimbus_match import build_single_style
 from generate_comparison import generate_comparison_image
@@ -261,7 +264,19 @@ def main() -> None:
         out_otf = out_dir / f"NimbusMatch-{style}.otf"
         build_single_style(nim_otf, lib_ttf, out_otf, style)
 
-    print("\n4. Generating visual comparison image...")
+    print("\n4. Building OpenType Collection (NimbusMatch.otc)...")
+    otc_path = out_dir / "NimbusMatch.otc"
+    ttc = TTCollection()
+    for style in styles:
+        otf_file = out_dir / f"NimbusMatch-{style}.otf"
+        if otf_file.exists():
+            ttc.fonts.append(TTFont(otf_file))
+    ttc.save(otc_path)
+    for f in ttc.fonts:
+        f.close()
+    print(f" Successfully created {otc_path.name} ({otc_path.stat().st_size} bytes)")
+
+    print("\n5. Generating visual comparison image...")
     ref_filenames = [
         "LiberationSerif-Regular.ttf",
         "LiberationSerif-Bold.ttf",
@@ -280,6 +295,15 @@ def main() -> None:
             ref_file = out_dir / filename
             if ref_file.exists():
                 ref_file.unlink()
+
+    print("\n5. Packaging all font variants into NimbusMatch.zip...")
+    zip_path = out_dir / "NimbusMatch.zip"
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for style in styles:
+            otf_file = out_dir / f"NimbusMatch-{style}.otf"
+            if otf_file.exists():
+                zf.write(otf_file, arcname=otf_file.name)
+    print(f" Successfully created {zip_path.name} ({zip_path.stat().st_size} bytes)")
 
     print("\nBuild complete! Output files:")
     for p in out_dir.iterdir():

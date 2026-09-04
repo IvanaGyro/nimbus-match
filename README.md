@@ -9,6 +9,17 @@ By recalibrating glyph advance widths, font metrics (`usWinAscent`, `usWinDescen
 
 ---
 
+## 📦 1-Click Installation Guide
+
+> [!TIP]
+> **To install all 4 font variants in 1 click**, simply download **`NimbusMatch.otc`** (OpenType Collection) from the latest [Release](https://github.com/IvanaGyro/nimbus-match/releases)!
+
+- **Windows**: Right-click **`NimbusMatch.otc`** $\to$ click **Install** (or *Install for all users*). All 4 font styles install in 1 click.
+- **macOS**: Double-click **`NimbusMatch.otc`** $\to$ click **Install Font** in Font Book.
+- **Linux (GNOME / KDE)**: Double-click **`NimbusMatch.otc`** $\to$ click **Install** in GNOME Fonts / KDE Font View (or copy to `~/.local/share/fonts/`).
+
+---
+
 ## 🎨 Visual Comparison (Regular Style)
 
 Direct inspection of **Times New Roman [RED]** vs. **Nimbus Match [BLUE]** for the **Regular** font style across Latin, Greek, Cyrillic, and punctuation/symbols:
@@ -23,7 +34,8 @@ Direct inspection of **Times New Roman [RED]** vs. **Nimbus Match [BLUE]** for t
 - **Strict Metric Compatibility**: Matches horizontal advance widths for over 800 glyphs across all 4 styles to preserve document line breaks and page layout.
 - **UPEM Rescaling**: Rescales 1000 UPEM PostScript fonts to standard 2048 UPEM TrueType grids for high-precision metric alignment.
 - **Kerning & GPOS Support**: Preserves and scales 800+ kerning pairs per font style.
-- **Automated Upstream Monitoring**: Weekly GitHub Actions workflow monitors URW Base35 & Liberation Fonts releases and automatically builds and publishes updated OTF font release binaries.
+- **OpenType Collection (`.otc`)**: Bundles all 4 styles into `NimbusMatch.otc` for 1-click installation across Windows, macOS, and Linux.
+- **Automated Upstream Monitoring**: Weekly GitHub Actions workflow monitors URW Base35 & Liberation Fonts releases and automatically builds and publishes updated font release binaries.
 - **Visual Verification Tooling**: Includes `generate_comparison.py` to create direct side-by-side and overlapped rendering inspections against system reference fonts.
 
 ---
@@ -39,11 +51,13 @@ Ensure you have [`pixi`](https://pixi.sh) installed.
 git clone https://github.com/IvanaGyro/nimbus-match.git
 cd nimbus-match
 
-# Run the build orchestrator (fetches upstream dependencies & generates dist/*.otf)
+# Run the build orchestrator (fetches upstream dependencies & generates dist/*)
 pixi run python check_and_build.py --force
 ```
 
-Generated OTF files and comparison PNG will be placed in the `dist/` directory:
+Generated font binaries and comparison PNG will be placed in `dist/`:
+- `dist/NimbusMatch.otc` (1-click OpenType Collection containing all 4 styles)
+- `dist/NimbusMatch.zip` (Zip bundle containing all 4 font OTF files)
 - `dist/NimbusMatch-Regular.otf`
 - `dist/NimbusMatch-Bold.otf`
 - `dist/NimbusMatch-Italic.otf`
