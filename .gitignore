@@ -9,3 +9,5 @@ scratch_fonts/
 __pycache__/
 scratch/
 .tmp_script.py
+.run_temp.py
+
