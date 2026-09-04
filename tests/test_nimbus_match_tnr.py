@@ -316,8 +316,29 @@ def test_notdef_and_unmapped_glyph_boundary(style_name, font_file, ref_candidate
     )
 
 
+def test_cff_font_matrix():
+    """Verify that CFF FontMatrix is explicitly serialized and exactly 1/upem (1/2048) for DirectWrite."""
+    for style_name, font_file, _ in STYLES:
+        font_path = DIST_DIR / font_file
+        font = TTFont(font_path)
+        assert "CFF " in font, f"Expected CFF table in {font_file}"
+        cff = font["CFF "].cff
+        top_dict = cff.topDictIndex[0]
+        assert "FontMatrix" in top_dict.rawDict, (
+            f"[{style_name}] FontMatrix missing from binary CFF TopDict (fell back to default)"
+        )
+        matrix = top_dict.FontMatrix
+        assert matrix[0] == pytest.approx(1.0 / 2048), (
+            f"[{style_name}] FontMatrix[0] is {matrix[0]}, expected {1.0 / 2048}"
+        )
+        assert matrix[3] == pytest.approx(1.0 / 2048), (
+            f"[{style_name}] FontMatrix[3] is {matrix[3]}, expected {1.0 / 2048}"
+        )
+        assert matrix[1] == 0.0 and matrix[2] == 0.0
+
+
 def test_otc_collection_integrity():
-    """Verify that NimbusMatch.otc exists and contains all 4 font faces with 2048 UPEM."""
+    """Verify that NimbusMatch.otc exists and contains all 4 font faces with 2048 UPEM and valid FontMatrix."""
     otc_path = DIST_DIR / "NimbusMatch.otc"
     if not otc_path.exists():
         pytest.skip("NimbusMatch.otc not found in dist/")
@@ -334,3 +355,9 @@ def test_otc_collection_integrity():
         name_table = font["name"]
         family_names = [r.toUnicode() for r in name_table.names if r.nameID in (1, 16)]
         assert any("Nimbus Match" in n for n in family_names)
+        if "CFF " in font:
+            top_dict = font["CFF "].cff.topDictIndex[0]
+            assert "FontMatrix" in top_dict.rawDict
+            matrix = top_dict.FontMatrix
+            assert matrix[0] == pytest.approx(1.0 / 2048)
+            assert matrix[3] == pytest.approx(1.0 / 2048)

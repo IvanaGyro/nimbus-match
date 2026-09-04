@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from fontTools.cffLib import TopDict
 from fontTools.cffLib import specializer as cffSpecializer
 from fontTools.feaLib.builder import addOpenTypeFeaturesFromString
 from fontTools.ttLib import TTFont, newTable
@@ -65,7 +66,7 @@ def replace_rounded_cff_with_exact_scaled_cff(
         else:
             setattr(stop, attr, value * factor)
 
-    stop.FontMatrix = [x / factor for x in otop.FontMatrix]
+    stop.FontMatrix = [1.0 / new_upem, 0.0, 0.0, 1.0 / new_upem, 0.0, 0.0]
 
     op = otop.Private
     sp = stop.Private
@@ -307,8 +308,20 @@ def build_single_style(
 
     old_upem = nimbus["head"].unitsPerEm
     target_upem = reference["head"].unitsPerEm
-    if old_upem == target_upem:
-        raise RuntimeError("Nimbus is already at reference UPEM")
+    # Reset TopDict.defaults to standard 1000 UPEM default [0.001, 0, 0, 0.001, 0, 0]
+    # to avoid state leakage from scale_upem in-place mutation across iterations
+    TopDict.defaults["FontMatrix"] = [0.001, 0.0, 0.0, 0.001, 0.0, 0.0]
+
+    if "CFF " in nimbus:
+        # Explicitly assign a fresh instance list so scale_upem does not mutate TopDict.defaults
+        nimbus["CFF "].cff.topDictIndex[0].FontMatrix = [
+            1.0 / old_upem,
+            0.0,
+            0.0,
+            1.0 / old_upem,
+            0.0,
+            0.0,
+        ]
 
     scale_upem(nimbus, target_upem)
     replace_rounded_cff_with_exact_scaled_cff(
@@ -320,6 +333,10 @@ def build_single_style(
     advances_changed, total_shared = copy_all_shared_advances(nimbus, reference)
     copy_vertical_metrics(nimbus, reference)
     set_font_names(nimbus, style_name)
+
+    # Ensure TopDict.defaults is [0.001, 0, 0, 0.001, 0, 0] before saving so DictCompiler
+    # serializes FontMatrix [1/2048, 0, 0, 1/2048, 0, 0] into the binary CFF table
+    TopDict.defaults["FontMatrix"] = [0.001, 0.0, 0.0, 0.001, 0.0, 0.0]
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     nimbus.save(out_path)
