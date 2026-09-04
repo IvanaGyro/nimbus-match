@@ -161,10 +161,16 @@ def build_kerning(dst: TTFont, ref: TTFont) -> tuple[dict[tuple[str, str], int],
     # safe for this targeted prototype to replace it.
     if "GPOS" in dst:
         feature_list = dst["GPOS"].table.FeatureList
-        tags = [] if not feature_list else [r.FeatureTag for r in feature_list.FeatureRecord]
+        tags = (
+            []
+            if not feature_list
+            else [r.FeatureTag for r in feature_list.FeatureRecord]
+        )
         extra = set(tags) - {"kern"}
         if extra:
-            raise RuntimeError(f"Refusing to discard non-kern Nimbus GPOS features: {sorted(extra)}")
+            raise RuntimeError(
+                f"Refusing to discard non-kern Nimbus GPOS features: {sorted(extra)}"
+            )
         del dst["GPOS"]
 
     lines = [
@@ -172,7 +178,7 @@ def build_kerning(dst: TTFont, ref: TTFont) -> tuple[dict[tuple[str, str], int],
         "languagesystem latn dflt;",
         "feature kern {",
     ]
-    lines.extend(f"  pos {l} {r} {v};" for (l, r), v in pairs.items())
+    lines.extend(f"  pos {left} {right} {val};" for (left, right), val in pairs.items())
     lines.append("} kern;")
     addOpenTypeFeaturesFromString(dst, "\n".join(lines), tables=["GPOS"])
 
@@ -275,7 +281,9 @@ def main() -> None:
     old_upem = nimbus["head"].unitsPerEm
     target_upem = reference["head"].unitsPerEm
     if old_upem == target_upem:
-        raise RuntimeError("Nimbus is already at the reference UPEM; this prototype expects a rescale")
+        raise RuntimeError(
+            "Nimbus is already at the reference UPEM; this prototype expects a rescale"
+        )
 
     scale_upem(nimbus, target_upem)
     replace_rounded_cff_with_exact_scaled_cff(
