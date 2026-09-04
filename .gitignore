@@ -3,6 +3,7 @@ build_temp/
 dist/
 scratch_fonts/
 *.png
+!nimbus_match_regular_preview.png
 *.otf
 *.ttf
 __pycache__/

@@ -9,6 +9,14 @@ By recalibrating glyph advance widths, font metrics (`usWinAscent`, `usWinDescen
 
 ---
 
+## 🎨 Visual Comparison (Regular Style)
+
+Direct inspection of **Times New Roman [RED]** vs. **Nimbus Match [BLUE]** for the **Regular** font style across Latin, Greek, Cyrillic, and punctuation/symbols:
+
+![Nimbus Match Regular Style Visual Comparison](nimbus_match_regular_preview.png)
+
+---
+
 ## ✨ Features
 
 - **4 Core Font Styles**: Regular, Bold, Italic, Bold Italic.
