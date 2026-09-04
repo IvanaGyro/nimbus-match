@@ -142,13 +142,13 @@ def generate_comparison_image(
     draw.rectangle([(0, 0), (width, 100)], fill=(20, 26, 38))
     draw.text(
         (padding, 20),
-        "Nimbus Match vs Times New Roman — Visual Comparison",
+        "Nimbus Match vs Times New Roman — Visual Overlap Comparison",
         fill=(255, 255, 255),
         font=label_font_title,
     )
     draw.text(
         (padding, 60),
-        "Direct visual inspection (Times New Roman [RED] vs. Nimbus Match [BLUE])",
+        "Red = Reference Font (Times New Roman / Liberation Serif) | Blue = Nimbus Match",
         fill=(175, 190, 210),
         font=label_font_script,
     )
@@ -188,34 +188,14 @@ def generate_comparison_image(
             )
             y += 24
 
-            x_text = padding + 210
+            x_text = padding + 260
 
-            # 1. Reference Font (Red)
             bbox_ref = draw.textbbox((x_text, y), sample_text, font=font_ref)
-            draw.text(
-                (padding + 15, y + 2),
-                f"{ref_name} [RED]",
-                fill=(220, 20, 20),
-                font=label_font_tag,
-            )
-            draw.text((x_text, y), sample_text, fill=(220, 20, 20), font=font_ref)
-            y += line_gap
-
-            # 2. Nimbus Match (Blue)
             bbox_nim = draw.textbbox((x_text, y), sample_text, font=font_nimbus)
-            draw.text(
-                (padding + 15, y + 2),
-                "Nimbus Match [BLUE]",
-                fill=(10, 90, 200),
-                font=label_font_tag,
-            )
-            draw.text((x_text, y), sample_text, fill=(10, 90, 200), font=font_nimbus)
-            y += line_gap
 
-            # 3. Overlapped View (Blend)
             draw.text(
                 (padding + 15, y + 2),
-                "Overlapped View",
+                f"Overlap (Red: {ref_name}, Blue: Nimbus)",
                 fill=(110, 30, 140),
                 font=label_font_tag,
             )
@@ -247,7 +227,7 @@ def generate_comparison_image(
                 fill=(230, 235, 240),
                 width=1,
             )
-            y += 30
+            y += 26
 
         y += 20
 
