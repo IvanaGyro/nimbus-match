@@ -7,3 +7,5 @@ scratch_fonts/
 *.otf
 *.ttf
 __pycache__/
+scratch/
+.tmp_script.py
