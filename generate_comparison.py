@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+
 from PIL import Image, ImageDraw, ImageFont
 
 TEST_SAMPLES = [
@@ -62,10 +63,10 @@ def load_ui_font(size: int = 16) -> ImageFont.ImageFont | ImageFont.FreeTypeFont
     """Load default or system sans font for UI labels."""
     try:
         return ImageFont.truetype("arial.ttf", size)
-    except Exception:
+    except OSError:
         try:
             return ImageFont.truetype("DejaVuSans.ttf", size)
-        except Exception:
+        except OSError:
             return ImageFont.load_default()
 
 

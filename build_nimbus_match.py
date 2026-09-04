@@ -280,7 +280,7 @@ def set_font_names(font: TTFont, style_name: str) -> None:
         font["name"].setName(text, nid, 3, 1, 0x409)
         try:
             font["name"].setName(text, nid, 1, 0, 0)
-        except Exception:
+        except (KeyError, ValueError, AttributeError):
             pass
 
 

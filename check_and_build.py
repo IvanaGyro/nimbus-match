@@ -19,7 +19,6 @@ from pathlib import Path
 from build_nimbus_match import build_single_style
 from generate_comparison import generate_comparison_image
 
-
 NIMBUS_REPO = "ArtifexSoftware/urw-base35-fonts"
 LIBERATION_REPO = "liberationfonts/liberation-fonts"
 
@@ -65,7 +64,7 @@ def check_tag_exists_in_current_repo(tag_name: str) -> bool:
             req.add_header("Authorization", f"token {token}")
         with urllib.request.urlopen(req):
             return True
-    except Exception:
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError):
         return False
 
 
@@ -168,7 +167,12 @@ def extract_liberation_fonts(lib_tag: str, target_dir: Path) -> dict[str, Path]:
                             print(f" Extracted Liberation [{style_key}]: {base_name}")
             if len(extracted) == 4:
                 break
-        except Exception as e:
+        except (
+            urllib.error.URLError,
+            urllib.error.HTTPError,
+            tarfile.TarError,
+            OSError,
+        ) as e:
             print(f" Failed download from {deb_url}: {e}")
 
     if len(extracted) < 4:
