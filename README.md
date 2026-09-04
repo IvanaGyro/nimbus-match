@@ -7,16 +7,8 @@
 
 By recalibrating glyph advance widths, font metrics (`usWinAscent`, `usWinDescent`, `hhea.ascent`, `hhea.descent`), units per em (UPEM 2048), and GPOS kerning tables from upstream [URW Nimbus Roman](https://github.com/ArtifexSoftware/urw-base35-fonts) and [Liberation Serif](https://github.com/liberationfonts/liberation-fonts), **Nimbus Match** ensures exact document layout parity without reflowing text.
 
----
-
-## 📦 1-Click Installation Guide
-
 > [!TIP]
-> **To install all 4 font variants in 1 click**, simply download **`NimbusMatch.otc`** (OpenType Collection) from the latest [Release](https://github.com/IvanaGyro/nimbus-match/releases)!
-
-- **Windows**: Right-click **`NimbusMatch.otc`** $\to$ click **Install** (or *Install for all users*). All 4 font styles install in 1 click.
-- **macOS**: Double-click **`NimbusMatch.otc`** $\to$ click **Install Font** in Font Book.
-- **Linux (GNOME / KDE)**: Double-click **`NimbusMatch.otc`** $\to$ click **Install** in GNOME Fonts / KDE Font View (or copy to `~/.local/share/fonts/`).
+> Download **`NimbusMatch.otc`** (OpenType Collection) from the latest [Release](https://github.com/IvanaGyro/nimbus-match/releases) to install all 4 font variants in 1 click!
 
 ---
 

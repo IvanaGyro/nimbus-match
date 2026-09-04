@@ -65,10 +65,7 @@ jobs:
             **Nimbus Match** is a free Times New Roman metric-compatible font family combining the visual letterforms of **Nimbus Roman** with the exact layout metrics and kerning of **Liberation Serif / Times New Roman**.
 
             > [!TIP]
-            > **To install all 4 font variants in 1 click**, simply download **`NimbusMatch.otc`**!
-            > - **Windows**: Right-click `NimbusMatch.otc` -> click **Install** (or *Install for all users*).
-            > - **macOS**: Double-click `NimbusMatch.otc` -> click **Install Font** in Font Book.
-            > - **Linux**: Double-click `NimbusMatch.otc` -> click **Install** in GNOME Fonts / KDE Font View (or copy to `~/.local/share/fonts/`).
+            > Download **`NimbusMatch.otc`** (OpenType Collection) to install all 4 font variants in 1 click!
 
             ### Release Details
             - **Upstream Liberation Serif Version**: `${{ steps.build.outputs.liberation_version }}`
