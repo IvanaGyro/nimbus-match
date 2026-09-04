@@ -26,6 +26,9 @@ optional-dependencies.dev = [
   "pytest>=9.1.1,<10",
   "ruff>=0.16.6,<0.17",
 ]
+scripts.build-nimbus-match = "nimbus_match.builder:main"
+scripts.check-and-build = "nimbus_match.orchestrator:main"
+scripts.generate-comparison = "nimbus_match.comparison:main"
 
 [tool.pixi]
 workspace.channels = [ "conda-forge" ]
