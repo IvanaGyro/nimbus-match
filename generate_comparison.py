@@ -178,28 +178,31 @@ def generate_comparison_image(fonts_dir: str | Path, out_file: str | Path) -> No
             )
             y += 24
 
-            x_text = padding + 180
+            x_text = padding + 210
 
+            # 1. Reference Font (Red)
             bbox_ref = draw.textbbox((x_text, y), sample_text, font=font_ref)
             draw.text(
                 (padding + 15, y + 2),
-                f"{ref_name} (Ref)",
-                fill=(200, 30, 30),
+                f"{ref_name} [RED]",
+                fill=(220, 20, 20),
                 font=label_font_tag,
             )
-            draw.text((x_text, y), sample_text, fill=(200, 30, 30), font=font_ref)
+            draw.text((x_text, y), sample_text, fill=(220, 20, 20), font=font_ref)
             y += line_gap
 
+            # 2. Nimbus Match (Blue)
             bbox_nim = draw.textbbox((x_text, y), sample_text, font=font_nimbus)
             draw.text(
                 (padding + 15, y + 2),
-                "Nimbus Match",
+                "Nimbus Match [BLUE]",
                 fill=(10, 90, 200),
                 font=label_font_tag,
             )
             draw.text((x_text, y), sample_text, fill=(10, 90, 200), font=font_nimbus)
             y += line_gap
 
+            # 3. Overlapped View (Blend)
             draw.text(
                 (padding + 15, y + 2),
                 "Overlapped View",
