@@ -21,7 +21,6 @@ TEST_SAMPLES = [
         "Latin Alphabet & Digits",
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ  abcdefghijklmnopqrstuvwxyz  0123456789",
     ),
-    ("Latin Text", "The quick brown fox jumps over the lazy dog."),
     (
         "Greek Alphabet",
         "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ  αβγδεζηθικλμνξοπρστυφχψω  0123456789",

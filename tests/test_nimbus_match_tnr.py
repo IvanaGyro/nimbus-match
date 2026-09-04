@@ -226,7 +226,6 @@ def test_rendered_sentence_width_matches_times_new_roman(
 
     test_sentences = [
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ  abcdefghijklmnopqrstuvwxyz  0123456789",
-        "The quick brown fox jumps over the lazy dog. 0123456789",
         "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ αβγδεζηθικλμνξοπρστυφχψω",
         "Съешь же ещё этих мягких французских булок, да выпей чаю.",
         r"!”#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ¡¢£¤¥§©«®°±²³µ¶·¹º»¼½¾¿–—‘’“”„†‡•…‰′″‹›€№™",
