@@ -1,0 +1,8 @@
+.pixi/
+build_temp/
+dist/
+scratch_fonts/
+*.png
+*.otf
+*.ttf
+__pycache__/

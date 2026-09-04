@@ -1,0 +1,85 @@
+name: Weekly Nimbus Match Font Release
+
+on:
+  schedule:
+    # Run every Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build and create GitHub release even if tag already exists'
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  check-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Pixi Environment
+        uses: prefix-dev/setup-pixi@v2
+        with:
+          pixi-version: v0.73.0
+          cache: true
+
+      - name: Check Upstream Releases and Build Fonts
+        id: build
+        shell: powershell
+        run: |
+          $forceFlag = ""
+          if ("${{ inputs.force_build }}" -eq "true") {
+              $forceFlag = "--force"
+          }
+          pixi run python check_and_build.py $forceFlag
+
+      - name: Run Pytest Compatibility Suite
+        if: steps.build.outputs.should_release == 'true'
+        shell: powershell
+        run: |
+          pixi run pytest
+
+      - name: Upload Comparison Image Artifact
+        if: steps.build.outputs.should_release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nimbus-match-comparison-image
+          path: dist/nimbus_match_comparison.png
+          if-no-files-found: warn
+
+      - name: Create GitHub Release
+        if: steps.build.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.build.outputs.release_tag }}
+          name: ${{ steps.build.outputs.release_title }}
+          body: |
+            ## Nimbus Match Font Release
+
+            **Nimbus Match** is a free Times New Roman metric-compatible font family combining the visual letterforms of **Nimbus Roman** with the exact layout metrics and kerning of **Liberation Serif / Times New Roman**.
+
+            ### Release Details
+            - **Upstream Liberation Serif Version**: `${{ steps.build.outputs.liberation_version }}`
+            - **Upstream URW Base35 (Nimbus Roman) Version**: `${{ steps.build.outputs.nimbus_version }}`
+            - **Included Styles**: Regular, Bold, Italic, Bold Italic
+            - **Supported Scripts**: Latin, Greek, Cyrillic, Punctuation & Symbols
+
+            ### Release Assets
+            - `NimbusMatch-Regular.otf`
+            - `NimbusMatch-Bold.otf`
+            - `NimbusMatch-Italic.otf`
+            - `NimbusMatch-BoldItalic.otf`
+            - `nimbus_match_comparison.png` (Side-by-side & overlay visual comparison)
+          files: |
+            dist/NimbusMatch-Regular.otf
+            dist/NimbusMatch-Bold.otf
+            dist/NimbusMatch-Italic.otf
+            dist/NimbusMatch-BoldItalic.otf
+            dist/nimbus_match_comparison.png
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
