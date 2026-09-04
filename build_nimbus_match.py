@@ -264,6 +264,13 @@ def set_font_names(font: TTFont, style_name: str) -> None:
     full_name = f"{family} {subfamily_user}"
     ps_name = f"NimbusMatch-{ps_suffix}"
 
+    target_nids = {1, 2, 3, 4, 5, 6, 16, 17}
+
+    if "name" in font:
+        font["name"].names = [
+            rec for rec in font["name"].names if rec.nameID not in target_nids
+        ]
+
     for nid, text in (
         (1, family),  # Font Family
         (2, subfamily_user),  # Font Subfamily

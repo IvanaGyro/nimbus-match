@@ -39,13 +39,14 @@ jobs:
           pixi run python check_and_build.py $forceFlag
 
       - name: Run Pytest Compatibility Suite
+        id: test
         if: steps.build.outputs.should_release == 'true'
         shell: powershell
         run: |
           pixi run pytest
 
       - name: Upload Comparison Image Artifact
-        if: steps.build.outputs.should_release == 'true'
+        if: steps.build.outputs.should_release == 'true' && steps.test.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: nimbus-match-comparison-image
@@ -53,7 +54,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Create GitHub Release
-        if: steps.build.outputs.should_release == 'true'
+        if: steps.build.outputs.should_release == 'true' && steps.test.outcome == 'success'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.build.outputs.release_tag }}

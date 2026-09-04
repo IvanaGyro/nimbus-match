@@ -262,27 +262,24 @@ def main() -> None:
         build_single_style(nim_otf, lib_ttf, out_otf, style)
 
     print("\n4. Generating visual comparison image...")
-    for filename in [
+    ref_filenames = [
         "LiberationSerif-Regular.ttf",
         "LiberationSerif-Bold.ttf",
         "LiberationSerif-Italic.ttf",
         "LiberationSerif-BoldItalic.ttf",
-    ]:
+    ]
+    for filename in ref_filenames:
         if (work_dir / filename).exists():
             (out_dir / filename).write_bytes((work_dir / filename).read_bytes())
 
     comparison_img = out_dir / "nimbus_match_comparison.png"
-    generate_comparison_image(out_dir, comparison_img)
-
-    for filename in [
-        "LiberationSerif-Regular.ttf",
-        "LiberationSerif-Bold.ttf",
-        "LiberationSerif-Italic.ttf",
-        "LiberationSerif-BoldItalic.ttf",
-    ]:
-        ref_file = out_dir / filename
-        if ref_file.exists():
-            ref_file.unlink()
+    try:
+        generate_comparison_image(out_dir, comparison_img)
+    finally:
+        for filename in ref_filenames:
+            ref_file = out_dir / filename
+            if ref_file.exists():
+                ref_file.unlink()
 
     print("\nBuild complete! Output files:")
     for p in out_dir.iterdir():

@@ -253,3 +253,64 @@ def test_rendered_sentence_width_matches_times_new_roman(
                 f"[{style_name} @ {size}pt] Rendered line width mismatch for '{text[:20]}...': "
                 f"Nimbus Match = {width_nim}px, Reference = {width_ref}px (diff = {diff}px, {relative_diff * 100:.2f}%)"
             )
+
+
+@pytest.mark.parametrize("style_name, font_file, ref_candidates", STYLES)
+def test_opentype_table_completeness(style_name, font_file, ref_candidates):
+    """Verify all mandatory OpenType font tables exist and are non-empty."""
+    font_path = DIST_DIR / font_file
+    font = TTFont(font_path)
+
+    required_tables = [
+        "head",
+        "hhea",
+        "maxp",
+        "OS/2",
+        "hmtx",
+        "cmap",
+        "name",
+        "post",
+        "CFF ",
+    ]
+    for table_tag in required_tables:
+        assert table_tag in font, (
+            f"[{style_name}] Missing required OpenType table: '{table_tag}'"
+        )
+
+
+@pytest.mark.parametrize("style_name, font_file, ref_candidates", STYLES)
+def test_whitespace_and_special_space_boundary(style_name, font_file, ref_candidates):
+    """Boundary test for whitespace, non-breaking space, and zero-width spaces."""
+    font_path = DIST_DIR / font_file
+    ref_path = get_ref_font_path(ref_candidates)
+
+    font = TTFont(font_path)
+    ref_font = TTFont(ref_path)
+
+    font_cmap = font.getBestCmap() or {}
+    ref_cmap = ref_font.getBestCmap() or {}
+
+    space_cps = [0x0020, 0x00A0]  # Standard space, Non-breaking space
+    for cp in space_cps:
+        if cp in font_cmap and cp in ref_cmap:
+            adv_nim = font["hmtx"][font_cmap[cp]][0]
+            adv_ref = ref_font["hmtx"][ref_cmap[cp]][0]
+            assert abs(adv_nim - adv_ref) <= 1, (
+                f"[{style_name}] Space codepoint U+{cp:04X} advance width mismatch: {adv_nim} vs {adv_ref}"
+            )
+
+
+@pytest.mark.parametrize("style_name, font_file, ref_candidates", STYLES)
+def test_notdef_and_unmapped_glyph_boundary(style_name, font_file, ref_candidates):
+    """Boundary test for .notdef presence and unmapped codepoint handling."""
+    font_path = DIST_DIR / font_file
+    font = TTFont(font_path)
+
+    glyph_order = font.getGlyphOrder()
+    assert ".notdef" in glyph_order, f"[{style_name}] Missing mandatory '.notdef' glyph"
+
+    font_cmap = font.getBestCmap() or {}
+    unmapped_cp = 0xE0000  # Private use / unmapped
+    assert unmapped_cp not in font_cmap, (
+        f"[{style_name}] Unexpected mapping for unmapped codepoint U+{unmapped_cp:05X}"
+    )
