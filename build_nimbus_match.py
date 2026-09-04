@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Dict, List, Tuple, Set, Optional
 
 from fontTools.cffLib import specializer as cffSpecializer
 from fontTools.feaLib.builder import addOpenTypeFeaturesFromString
@@ -145,10 +144,16 @@ def build_kerning(dst: TTFont, ref: TTFont) -> tuple[dict[tuple[str, str], int],
 
     if "GPOS" in dst:
         feature_list = dst["GPOS"].table.FeatureList
-        tags = [] if not feature_list else [r.FeatureTag for r in feature_list.FeatureRecord]
+        tags = (
+            []
+            if not feature_list
+            else [r.FeatureTag for r in feature_list.FeatureRecord]
+        )
         extra = set(tags) - {"kern"}
         if extra:
-            raise RuntimeError(f"Refusing to discard non-kern Nimbus GPOS features: {sorted(extra)}")
+            raise RuntimeError(
+                f"Refusing to discard non-kern Nimbus GPOS features: {sorted(extra)}"
+            )
         del dst["GPOS"]
 
     lines = [
@@ -156,7 +161,7 @@ def build_kerning(dst: TTFont, ref: TTFont) -> tuple[dict[tuple[str, str], int],
         "languagesystem latn dflt;",
         "feature kern {",
     ]
-    lines.extend(f"  pos {l} {r} {v};" for (l, r), v in pairs.items())
+    lines.extend(f"  pos {left} {right} {val};" for (left, right), val in pairs.items())
     lines.append("} kern;")
     addOpenTypeFeaturesFromString(dst, "\n".join(lines), tables=["GPOS"])
 
@@ -247,27 +252,30 @@ def copy_vertical_metrics(dst: TTFont, ref: TTFont) -> None:
 def set_font_names(font: TTFont, style_name: str) -> None:
     """Set font naming metadata to 'Nimbus Match'."""
     family = "Nimbus Match"
-    
+
     style_str_map = {
         "Regular": ("Regular", "Regular"),
         "Bold": ("Bold", "Bold"),
         "Italic": ("Italic", "Italic"),
         "BoldItalic": ("Bold Italic", "BoldItalic"),
     }
-    
+
     subfamily_user, ps_suffix = style_str_map.get(style_name, (style_name, style_name))
     full_name = f"{family} {subfamily_user}"
     ps_name = f"NimbusMatch-{ps_suffix}"
 
     for nid, text in (
-        (1, family),               # Font Family
-        (2, subfamily_user),       # Font Subfamily
-        (3, f"1.000;{ps_name}"),   # Unique ID
-        (4, full_name),            # Full Name
-        (5, "Version 1.000; Nimbus Match Times New Roman metric compatible font"), # Version
-        (6, ps_name),              # PostScript Name
-        (16, family),              # Preferred Family
-        (17, subfamily_user),      # Preferred Subfamily
+        (1, family),  # Font Family
+        (2, subfamily_user),  # Font Subfamily
+        (3, f"1.000;{ps_name}"),  # Unique ID
+        (4, full_name),  # Full Name
+        (
+            5,
+            "Version 1.000; Nimbus Match Times New Roman metric compatible font",
+        ),  # Version
+        (6, ps_name),  # PostScript Name
+        (16, family),  # Preferred Family
+        (17, subfamily_user),  # Preferred Subfamily
     ):
         font["name"].setName(text, nid, 3, 1, 0x409)
         try:
@@ -276,7 +284,9 @@ def set_font_names(font: TTFont, style_name: str) -> None:
             pass
 
 
-def build_single_style(nimbus_path: str | Path, ref_path: str | Path, out_path: str | Path, style_name: str) -> None:
+def build_single_style(
+    nimbus_path: str | Path, ref_path: str | Path, out_path: str | Path, style_name: str
+) -> None:
     """Process a single font style (Regular, Bold, Italic, BoldItalic)."""
     nimbus_path = Path(nimbus_path)
     ref_path = Path(ref_path)
@@ -315,8 +325,15 @@ def build_single_style(nimbus_path: str | Path, ref_path: str | Path, out_path: 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Build Nimbus Match fonts")
     ap.add_argument("--nimbus", required=True, help="Input Nimbus OTF path")
-    ap.add_argument("--reference", required=True, help="Input Liberation Serif TTF reference path")
-    ap.add_argument("--style", required=True, choices=["Regular", "Bold", "Italic", "BoldItalic"], help="Style name")
+    ap.add_argument(
+        "--reference", required=True, help="Input Liberation Serif TTF reference path"
+    )
+    ap.add_argument(
+        "--style",
+        required=True,
+        choices=["Regular", "Bold", "Italic", "BoldItalic"],
+        help="Style name",
+    )
     ap.add_argument("--out", required=True, help="Output OTF file path")
     args = ap.parse_args()
 

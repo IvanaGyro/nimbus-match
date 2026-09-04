@@ -12,7 +12,6 @@ import argparse
 import io
 import json
 import os
-import sys
 import tarfile
 import urllib.request
 from pathlib import Path
@@ -20,13 +19,14 @@ from pathlib import Path
 from build_nimbus_match import build_single_style
 from generate_comparison import generate_comparison_image
 
-
 NIMBUS_REPO = "ArtifexSoftware/urw-base35-fonts"
 LIBERATION_REPO = "liberationfonts/liberation-fonts"
 
 
 def fetch_json(url: str) -> dict | list:
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0)"})
+    req = urllib.request.Request(
+        url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0)"}
+    )
     with urllib.request.urlopen(req) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
@@ -34,7 +34,7 @@ def fetch_json(url: str) -> dict | list:
 def get_latest_upstream_versions() -> tuple[str, str]:
     """Fetch latest release tags for Nimbus Roman (urw-base35) and Liberation Fonts."""
     print("Fetching latest release info from GitHub API...")
-    
+
     # 1. Nimbus Roman
     nimbus_data = fetch_json(f"https://api.github.com/repos/{NIMBUS_REPO}/releases")
     if not nimbus_data:
@@ -58,7 +58,9 @@ def check_tag_exists_in_current_repo(tag_name: str) -> bool:
 
     url = f"https://api.github.com/repos/{repo}/releases/tags/{tag_name}"
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0)"})
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0)"}
+        )
         token = os.environ.get("GITHUB_TOKEN")
         if token:
             req.add_header("Authorization", f"token {token}")
@@ -70,7 +72,9 @@ def check_tag_exists_in_current_repo(tag_name: str) -> bool:
 
 def download_bytes(url: str) -> bytes:
     print(f"Downloading: {url}")
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0)"})
+    req = urllib.request.Request(
+        url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0)"}
+    )
     with urllib.request.urlopen(req) as resp:
         return resp.read()
 
@@ -79,7 +83,7 @@ def extract_nimbus_fonts(nimbus_tag: str, target_dir: Path) -> dict[str, Path]:
     """Download and extract Nimbus Roman OTF files."""
     url = f"https://github.com/{NIMBUS_REPO}/archive/refs/tags/{nimbus_tag}.tar.gz"
     content = download_bytes(url)
-    
+
     extracted: dict[str, Path] = {}
     mapping = {
         "NimbusRoman-Regular.otf": "Regular",
@@ -99,7 +103,9 @@ def extract_nimbus_fonts(nimbus_tag: str, target_dir: Path) -> dict[str, Path]:
                 print(f" Extracted Nimbus [{style_key}]: {base_name}")
 
     if len(extracted) < 4:
-        raise RuntimeError(f"Failed to extract all 4 Nimbus styles (found {len(extracted)}/4)")
+        raise RuntimeError(
+            f"Failed to extract all 4 Nimbus styles (found {len(extracted)}/4)"
+        )
     return extracted
 
 
@@ -129,13 +135,13 @@ def extract_liberation_fonts(lib_tag: str, target_dir: Path) -> dict[str, Path]:
                 offset = 8
                 data_tar = None
                 while offset < len(content):
-                    header = content[offset:offset+60]
+                    header = content[offset : offset + 60]
                     if len(header) < 60:
                         break
                     name = header[:16].decode("ascii", errors="ignore").strip()
                     size = int(header[48:58].decode("ascii", errors="ignore").strip())
                     offset += 60
-                    file_data = content[offset:offset+size]
+                    file_data = content[offset : offset + size]
                     if name.startswith("data.tar"):
                         data_tar = file_data
                         break
@@ -151,7 +157,9 @@ def extract_liberation_fonts(lib_tag: str, target_dir: Path) -> dict[str, Path]:
                                 out_path = target_dir / base_name
                                 out_path.write_bytes(tar.extractfile(m).read())
                                 extracted[style_key] = out_path
-                                print(f" Extracted Liberation [{style_key}]: {base_name}")
+                                print(
+                                    f" Extracted Liberation [{style_key}]: {base_name}"
+                                )
             else:
                 # Arch package tar.zst or tar.xz
                 with tarfile.open(fileobj=io.BytesIO(content), mode="r:*") as tar:
@@ -181,7 +189,9 @@ def extract_liberation_fonts(lib_tag: str, target_dir: Path) -> dict[str, Path]:
                 print(f" Downloaded Liberation raw [{style_key}]: {filename}")
 
     if len(extracted) < 4:
-        raise RuntimeError(f"Failed to extract all 4 Liberation Serif styles (found {len(extracted)}/4)")
+        raise RuntimeError(
+            f"Failed to extract all 4 Liberation Serif styles (found {len(extracted)}/4)"
+        )
     return extracted
 
 
@@ -194,10 +204,20 @@ def set_github_output(name: str, value: str) -> None:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Check upstream releases and build Nimbus Match fonts")
-    ap.add_argument("--force", action="store_true", help="Force build even if release tag exists")
-    ap.add_argument("--work-dir", default="build_temp", help="Working directory for downloads and intermediate files")
-    ap.add_argument("--out-dir", default="dist", help="Output directory for generated fonts")
+    ap = argparse.ArgumentParser(
+        description="Check upstream releases and build Nimbus Match fonts"
+    )
+    ap.add_argument(
+        "--force", action="store_true", help="Force build even if release tag exists"
+    )
+    ap.add_argument(
+        "--work-dir",
+        default="build_temp",
+        help="Working directory for downloads and intermediate files",
+    )
+    ap.add_argument(
+        "--out-dir", default="dist", help="Output directory for generated fonts"
+    )
     args = ap.parse_args()
 
     work_dir = Path(args.work_dir)
@@ -214,7 +234,9 @@ def main() -> None:
 
     already_released = check_tag_exists_in_current_repo(release_tag)
     if already_released and not args.force:
-        print(f"Release tag {release_tag} already exists in current repository. Skipping build.")
+        print(
+            f"Release tag {release_tag} already exists in current repository. Skipping build."
+        )
         set_github_output("should_release", "false")
         set_github_output("release_tag", release_tag)
         return
@@ -241,7 +263,12 @@ def main() -> None:
 
     print("\n4. Generating visual comparison image...")
     # Copy reference fonts to out_dir for comparison generator
-    for filename in ["LiberationSerif-Regular.ttf", "LiberationSerif-Bold.ttf", "LiberationSerif-Italic.ttf", "LiberationSerif-BoldItalic.ttf"]:
+    for filename in [
+        "LiberationSerif-Regular.ttf",
+        "LiberationSerif-Bold.ttf",
+        "LiberationSerif-Italic.ttf",
+        "LiberationSerif-BoldItalic.ttf",
+    ]:
         if (work_dir / filename).exists():
             (out_dir / filename).write_bytes((work_dir / filename).read_bytes())
 
@@ -249,7 +276,12 @@ def main() -> None:
     generate_comparison_image(out_dir, comparison_img)
 
     # Clean up intermediate reference files from dist directory so release contains only output OTF + PNG
-    for filename in ["LiberationSerif-Regular.ttf", "LiberationSerif-Bold.ttf", "LiberationSerif-Italic.ttf", "LiberationSerif-BoldItalic.ttf"]:
+    for filename in [
+        "LiberationSerif-Regular.ttf",
+        "LiberationSerif-Bold.ttf",
+        "LiberationSerif-Italic.ttf",
+        "LiberationSerif-BoldItalic.ttf",
+    ]:
         ref_file = out_dir / filename
         if ref_file.exists():
             ref_file.unlink()
