@@ -1,9 +1,11 @@
 [project]
 name = "nimbus-match"
 version = "0.1.0"
+license = "AGPL-3.0-or-later"
 authors = [ { name = "Ivana", email = "ivana.gyro@gmail.com" } ]
 requires-python = ">=3.11"
 classifiers = [
+  "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",

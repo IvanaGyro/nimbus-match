@@ -4,6 +4,7 @@ dist/
 scratch_fonts/
 *.png
 !nimbus_match_regular_preview.png
+!tinos_tnr_difference_comparison.png
 *.otf
 *.ttf
 __pycache__/
