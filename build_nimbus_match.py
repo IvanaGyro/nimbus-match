@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 Build Nimbus Match font family (Regular, Bold, Italic, Bold Italic)
-with Times New Roman / Liberation Serif layout metrics.
+with Times New Roman / Tinos layout metrics.
 
 Inputs:
   - Nimbus Roman OTF font files (URW Base35)
-  - Liberation Serif TTF font files (metric reference)
+  - Tinos / reference TTF font files (metric reference)
 
 The script does NOT read or copy anything from proprietary Times New Roman.
 All font binaries are processed dynamically.
@@ -112,10 +112,66 @@ def map_reference_glyph(
     return None
 
 
+def extract_reference_kerning_pairs(ref: TTFont) -> dict[tuple[str, str], int]:
+    """Extract pair kerning values from reference font via legacy kern table or GPOS PairPos."""
+    pairs: dict[tuple[str, str], int] = {}
+    if "kern" in ref and ref["kern"].kernTables:
+        for (left, right), val in ref["kern"].kernTables[0].kernTable.items():
+            if val != 0:
+                pairs[(left, right)] = int(val)
+        return pairs
+
+    if "GPOS" in ref and ref["GPOS"].table:
+        gpos = ref["GPOS"].table
+        kern_lookups = set()
+        if gpos.FeatureList:
+            for r in gpos.FeatureList.FeatureRecord:
+                if r.FeatureTag == "kern":
+                    for idx in r.Feature.LookupListIndex:
+                        kern_lookups.add(idx)
+
+        glyph_order = ref.getGlyphOrder()
+        for idx in sorted(kern_lookups):
+            lookup = gpos.LookupList.Lookup[idx]
+            if lookup.LookupType == 2:  # PairPos
+                for subtable in lookup.SubTable:
+                    if subtable.Format == 1:
+                        for g_name, pair_set in zip(
+                            subtable.Coverage.glyphs, subtable.PairSet
+                        ):
+                            for pvr in pair_set.PairValueRecord:
+                                val = getattr(pvr.Value1, "XAdvance", 0) or 0
+                                if val != 0:
+                                    pairs[(g_name, pvr.SecondGlyph)] = int(val)
+                    elif subtable.Format == 2:
+                        class1_glyphs: dict[int, list[str]] = {}
+                        class2_glyphs: dict[int, list[str]] = {}
+                        for g in subtable.Coverage.glyphs:
+                            c1 = subtable.ClassDef1.classDefs.get(g, 0)
+                            class1_glyphs.setdefault(c1, []).append(g)
+                        for g in glyph_order:
+                            c2 = subtable.ClassDef2.classDefs.get(g, 0)
+                            class2_glyphs.setdefault(c2, []).append(g)
+
+                        for c1_idx, c1_rec in enumerate(subtable.Class1Record):
+                            if c1_idx not in class1_glyphs:
+                                continue
+                            for c2_idx, c2_rec in enumerate(c1_rec.Class2Record):
+                                if c2_idx not in class2_glyphs:
+                                    continue
+                                val = getattr(c2_rec.Value1, "XAdvance", 0) or 0
+                                if val != 0:
+                                    for g1 in class1_glyphs[c1_idx]:
+                                        for g2 in class2_glyphs[c2_idx]:
+                                            pairs[(g1, g2)] = int(val)
+    return pairs
+
+
 def build_kerning(dst: TTFont, ref: TTFont) -> tuple[dict[tuple[str, str], int], int]:
-    """Transfer kerning pairs from reference to destination font."""
-    if "kern" not in ref or not ref["kern"].kernTables:
-        raise RuntimeError("Reference font has no legacy kern table")
+    """Transfer kerning pairs from reference font (kern or GPOS) to destination font."""
+    ref_pairs = extract_reference_kerning_pairs(ref)
+    if not ref_pairs:
+        raise RuntimeError("Reference font has no kerning pairs in kern or GPOS tables")
 
     ref_rev = reverse_cmap(ref)
     dst_cmap = dst.getBestCmap() or {}
@@ -123,7 +179,7 @@ def build_kerning(dst: TTFont, ref: TTFont) -> tuple[dict[tuple[str, str], int],
 
     pairs: dict[tuple[str, str], int] = {}
     skipped = 0
-    for (left, right), val in ref["kern"].kernTables[0].kernTable.items():
+    for (left, right), val in ref_pairs.items():
         dl = map_reference_glyph(left, ref_rev, dst_cmap, dst_glyphs)
         dr = map_reference_glyph(right, ref_rev, dst_cmap, dst_glyphs)
         if not dl or not dr:
@@ -236,7 +292,9 @@ def copy_all_shared_advances(dst: TTFont, ref: TTFont) -> tuple[int, int]:
     return changed, len(shared_cps)
 
 
-def copy_metrics_and_os2_metadata(dst: TTFont, ref: TTFont) -> None:
+def copy_metrics_and_os2_metadata(
+    dst: TTFont, ref: TTFont, style_name: str = "Regular"
+) -> None:
     """
     Copy vertical metrics, layout metrics (sub/superscript, strikeout), PANOSE,
     and family classification from reference font. Also recalculates OS/2 ranges
@@ -271,7 +329,18 @@ def copy_metrics_and_os2_metadata(dst: TTFont, ref: TTFont) -> None:
             setattr(dst["OS/2"], attr, getattr(ref["OS/2"], attr))
 
     # 3. PANOSE and sFamilyClass
-    dst["OS/2"].sFamilyClass = ref["OS/2"].sFamilyClass
+    if getattr(ref["OS/2"], "sFamilyClass", 0) != 0:
+        dst["OS/2"].sFamilyClass = ref["OS/2"].sFamilyClass
+    else:
+        dst["OS/2"].sFamilyClass = 261  # Oldstyle Serifs (Times New Roman standard)
+
+    panose_defaults = {
+        "Regular": (2, 2, 6, 3, 5, 4, 5, 2, 3, 4),
+        "Bold": (2, 2, 8, 3, 7, 5, 5, 2, 3, 4),
+        "Italic": (2, 2, 5, 3, 5, 4, 5, 9, 3, 4),
+        "BoldItalic": (2, 2, 7, 3, 6, 5, 5, 9, 3, 4),
+    }
+
     panose_attrs = (
         "bFamilyType",
         "bSerifStyle",
@@ -284,8 +353,14 @@ def copy_metrics_and_os2_metadata(dst: TTFont, ref: TTFont) -> None:
         "bMidline",
         "bXHeight",
     )
-    for attr in panose_attrs:
-        setattr(dst["OS/2"].panose, attr, getattr(ref["OS/2"].panose, attr))
+    ref_panose = [getattr(ref["OS/2"].panose, a, 0) for a in panose_attrs]
+    if any(ref_panose):
+        for attr in panose_attrs:
+            setattr(dst["OS/2"].panose, attr, getattr(ref["OS/2"].panose, attr))
+    else:
+        defaults = panose_defaults.get(style_name, panose_defaults["Regular"])
+        for attr, val in zip(panose_attrs, defaults):
+            setattr(dst["OS/2"].panose, attr, val)
 
     # 4. Code page ranges
     dst["OS/2"].ulCodePageRange1 = ref["OS/2"].ulCodePageRange1
@@ -407,7 +482,7 @@ def build_single_style(
     pairs, skipped = build_kerning(nimbus, reference)
     liga_removed = remove_feature(nimbus, "GSUB", "liga")
     advances_changed, total_shared = copy_all_shared_advances(nimbus, reference)
-    copy_metrics_and_os2_metadata(nimbus, reference)
+    copy_metrics_and_os2_metadata(nimbus, reference, style_name=style_name)
     set_font_names(nimbus, style_name, version=version)
 
     # Ensure TopDict.defaults is [0.001, 0, 0, 0.001, 0, 0] before saving so DictCompiler
@@ -432,7 +507,7 @@ def main() -> None:
     ap.add_argument(
         "--reference",
         required=True,
-        help="Input Liberation Serif TTF reference path",
+        help="Input Tinos or reference TTF font path",
     )
     ap.add_argument(
         "--style",

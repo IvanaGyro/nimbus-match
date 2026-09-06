@@ -6,7 +6,7 @@ Includes overlapped rendering for checking layout metrics and glyph outlines.
 Covers:
   - Styles: Regular, Bold, Italic, Bold Italic
   - Scripts: Latin (A-Z, a-z, 0-9), Greek, Cyrillic, Wide Punctuation & Symbols
-  - Reference: Times New Roman (system font on Windows/macOS) with Liberation Serif fallback
+  - Reference: Times New Roman (system font on Windows/macOS) with Tinos / Liberation Serif fallback
 """
 
 from __future__ import annotations
@@ -39,22 +39,22 @@ STYLES = [
     (
         "Regular",
         "NimbusMatch-Regular.otf",
-        ["times.ttf", "LiberationSerif-Regular.ttf"],
+        ["times.ttf", "Tinos-Regular.ttf", "LiberationSerif-Regular.ttf"],
     ),
     (
         "Bold",
         "NimbusMatch-Bold.otf",
-        ["timesbd.ttf", "LiberationSerif-Bold.ttf"],
+        ["timesbd.ttf", "Tinos-Bold.ttf", "LiberationSerif-Bold.ttf"],
     ),
     (
         "Italic",
         "NimbusMatch-Italic.otf",
-        ["timesi.ttf", "LiberationSerif-Italic.ttf"],
+        ["timesi.ttf", "Tinos-Italic.ttf", "LiberationSerif-Italic.ttf"],
     ),
     (
         "Bold Italic",
         "NimbusMatch-BoldItalic.otf",
-        ["timesbi.ttf", "LiberationSerif-BoldItalic.ttf"],
+        ["timesbi.ttf", "Tinos-BoldItalic.ttf", "LiberationSerif-BoldItalic.ttf"],
     ),
 ]
 
@@ -71,7 +71,7 @@ def load_ui_font(size: int = 16) -> ImageFont.ImageFont | ImageFont.FreeTypeFont
 
 
 def find_ref_font_path(candidates: list[str], fonts_dir: Path) -> tuple[Path, str]:
-    """Locate reference font (Times New Roman on Windows/macOS or Liberation Serif fallback)."""
+    """Locate reference font (Times New Roman on Windows/macOS or Tinos / Liberation fallback)."""
     search_dirs = [
         Path(r"C:\Windows\Fonts"),
         Path("/System/Library/Fonts/Supplemental"),
@@ -104,7 +104,12 @@ def find_ref_font_path(candidates: list[str], fonts_dir: Path) -> tuple[Path, st
 
     for cand in candidates:
         if (fonts_dir / cand).exists():
-            return fonts_dir / cand, "Liberation Serif"
+            ref_name = (
+                "Tinos"
+                if "Tinos" in cand
+                else ("Liberation Serif" if "Liberation" in cand else "Reference")
+            )
+            return fonts_dir / cand, ref_name
 
     raise FileNotFoundError(
         f"Could not find reference font from candidates {candidates}"
@@ -149,7 +154,7 @@ def generate_comparison_image(
     )
     draw.text(
         (padding, 60),
-        "Red = Reference Font (Times New Roman / Liberation Serif) | Blue = Nimbus Match",
+        "Red = Reference Font (Times New Roman / Tinos) | Blue = Nimbus Match",
         fill=(175, 190, 210),
         font=label_font_script,
     )

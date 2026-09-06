@@ -62,13 +62,13 @@ jobs:
           body: |
             ## Nimbus Match Font Release
 
-            **Nimbus Match** is a free Times New Roman metric-compatible font family combining the visual letterforms of **Nimbus Roman** with the exact layout metrics and kerning of **Liberation Serif / Times New Roman**.
+            **Nimbus Match** is a free Times New Roman metric-compatible font family combining the visual letterforms of **Nimbus Roman** with the exact layout metrics and kerning of **Tinos / Times New Roman**.
 
             > [!TIP]
             > Download **`NimbusMatch.otc`** (OpenType Collection) to install all 4 font variants in 1 click!
 
             ### Release Details
-            - **Upstream Liberation Serif Version**: `${{ steps.build.outputs.liberation_version }}`
+            - **Upstream Tinos Version**: `${{ steps.build.outputs.tinos_version }}`
             - **Upstream URW Base35 (Nimbus Roman) Version**: `${{ steps.build.outputs.nimbus_version }}`
             - **Included Styles**: Regular, Bold, Italic, Bold Italic
             - **Supported Scripts**: Latin, Greek, Cyrillic, Punctuation & Symbols

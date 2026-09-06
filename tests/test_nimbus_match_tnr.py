@@ -11,14 +11,22 @@ STYLES = [
     (
         "Regular",
         "NimbusMatch-Regular.otf",
-        ["times.ttf", "LiberationSerif-Regular.ttf"],
+        ["times.ttf", "Tinos-Regular.ttf", "LiberationSerif-Regular.ttf"],
     ),
-    ("Bold", "NimbusMatch-Bold.otf", ["timesbd.ttf", "LiberationSerif-Bold.ttf"]),
-    ("Italic", "NimbusMatch-Italic.otf", ["timesi.ttf", "LiberationSerif-Italic.ttf"]),
+    (
+        "Bold",
+        "NimbusMatch-Bold.otf",
+        ["timesbd.ttf", "Tinos-Bold.ttf", "LiberationSerif-Bold.ttf"],
+    ),
+    (
+        "Italic",
+        "NimbusMatch-Italic.otf",
+        ["timesi.ttf", "Tinos-Italic.ttf", "LiberationSerif-Italic.ttf"],
+    ),
     (
         "BoldItalic",
         "NimbusMatch-BoldItalic.otf",
-        ["timesbi.ttf", "LiberationSerif-BoldItalic.ttf"],
+        ["timesbi.ttf", "Tinos-BoldItalic.ttf", "LiberationSerif-BoldItalic.ttf"],
     ),
 ]
 
@@ -32,6 +40,7 @@ def get_ref_font_path(candidates: list[str]) -> Path:
         Path("/Library/Fonts"),
         Path("dist"),
         Path("scratch_fonts"),
+        Path("build_temp"),
     ]
     for sdir in search_dirs:
         if not sdir.exists():
