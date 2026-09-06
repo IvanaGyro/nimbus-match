@@ -262,7 +262,9 @@ def main() -> None:
         nim_otf = nimbus_files[style]
         lib_ttf = lib_files[style]
         out_otf = out_dir / f"NimbusMatch-{style}.otf"
-        build_single_style(nim_otf, lib_ttf, out_otf, style)
+        build_single_style(
+            nim_otf, lib_ttf, out_otf, style, version=f"{lib_tag}-{nimbus_tag}"
+        )
 
     print("\n4. Building OpenType Collection (NimbusMatch.otc)...")
     otc_path = out_dir / "NimbusMatch.otc"

@@ -361,3 +361,63 @@ def test_otc_collection_integrity():
             matrix = top_dict.FontMatrix
             assert matrix[0] == pytest.approx(1.0 / 2048)
             assert matrix[3] == pytest.approx(1.0 / 2048)
+
+
+@pytest.mark.parametrize("style_name, font_file, ref_candidates", STYLES)
+def test_os2_panose_and_family_classification(style_name, font_file, ref_candidates):
+    """Verify PANOSE Latin Text classification and sFamilyClass Oldstyle Serifs."""
+    font_path = DIST_DIR / font_file
+    font = TTFont(font_path)
+    os2 = font["OS/2"]
+
+    assert os2.sFamilyClass == 261, (
+        f"[{style_name}] Expected sFamilyClass == 261 (Oldstyle Serifs), got {os2.sFamilyClass}"
+    )
+    assert os2.panose.bFamilyType == 2, (
+        f"[{style_name}] Expected PANOSE bFamilyType == 2 (Latin Text), got {os2.panose.bFamilyType}"
+    )
+    assert os2.panose.bProportion == 3, (
+        f"[{style_name}] Expected PANOSE bProportion == 3 (Modern proportional), got {os2.panose.bProportion}"
+    )
+
+
+@pytest.mark.parametrize("style_name, font_file, ref_candidates", STYLES)
+def test_os2_ranges_and_cjk_isolation(style_name, font_file, ref_candidates):
+    """Verify absence of PCLT, Bit 48 cleared in ulUnicodeRange2, and glyph retention."""
+    font_path = DIST_DIR / font_file
+    font = TTFont(font_path)
+
+    assert "PCLT" not in font, f"[{style_name}] Obsolete PCLT table must not be present"
+    assert font["OS/2"].fsType == 0x0004, (
+        f"[{style_name}] Expected fsType == 0x0004, got 0x{font['OS/2'].fsType:04X}"
+    )
+
+    # Bit 48 of ulUnicodeRange corresponds to bit 16 in ulUnicodeRange2
+    bit48_set = bool(font["OS/2"].ulUnicodeRange2 & (1 << 16))
+    assert not bit48_set, (
+        f"[{style_name}] ulUnicodeRange Bit 48 (CJK Symbols and Punctuation) must be 0"
+    )
+
+    # Glyphs U+301A and U+301B should still be preserved in cmap
+    cmap = font.getBestCmap() or {}
+    assert 0x301A in cmap and 0x301B in cmap, (
+        f"[{style_name}] Characters U+301A and U+301B must be preserved in cmap"
+    )
+
+
+@pytest.mark.parametrize("style_name, font_file, ref_candidates", STYLES)
+def test_version_metadata(style_name, font_file, ref_candidates):
+    """Verify nameID 3, nameID 5, and head.fontRevision metadata."""
+    font_path = DIST_DIR / font_file
+    font = TTFont(font_path)
+
+    name_records = {
+        rec.nameID: rec.toUnicode()
+        for rec in font["name"].names
+        if rec.platformID == 3 and rec.platEncID == 1
+    }
+    assert 3 in name_records, f"[{style_name}] Missing nameID 3"
+    assert 5 in name_records, f"[{style_name}] Missing nameID 5"
+    assert f"NimbusMatch-{style_name.replace(' ', '')}" in name_records[3]
+    assert "Nimbus Match Times New Roman metric compatible font" in name_records[5]
+    assert font["head"].fontRevision >= 1.0

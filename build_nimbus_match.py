@@ -236,8 +236,13 @@ def copy_all_shared_advances(dst: TTFont, ref: TTFont) -> tuple[int, int]:
     return changed, len(shared_cps)
 
 
-def copy_vertical_metrics(dst: TTFont, ref: TTFont) -> None:
-    """Copy vertical metrics from reference font to destination font."""
+def copy_metrics_and_os2_metadata(dst: TTFont, ref: TTFont) -> None:
+    """
+    Copy vertical metrics, layout metrics (sub/superscript, strikeout), PANOSE,
+    and family classification from reference font. Also recalculates OS/2 ranges
+    and cleans up obsolete tables.
+    """
+    # 1. Vertical metrics
     for attr in ("ascent", "descent", "lineGap"):
         setattr(dst["hhea"], attr, getattr(ref["hhea"], attr))
     for attr in (
@@ -249,9 +254,60 @@ def copy_vertical_metrics(dst: TTFont, ref: TTFont) -> None:
     ):
         setattr(dst["OS/2"], attr, getattr(ref["OS/2"], attr))
 
+    # 2. Subscript, superscript, and strikeout metrics
+    for attr in (
+        "ySubscriptXSize",
+        "ySubscriptYSize",
+        "ySubscriptXOffset",
+        "ySubscriptYOffset",
+        "ySuperscriptXSize",
+        "ySuperscriptYSize",
+        "ySuperscriptXOffset",
+        "ySuperscriptYOffset",
+        "yStrikeoutSize",
+        "yStrikeoutPosition",
+    ):
+        if hasattr(ref["OS/2"], attr):
+            setattr(dst["OS/2"], attr, getattr(ref["OS/2"], attr))
 
-def set_font_names(font: TTFont, style_name: str) -> None:
-    """Set font naming metadata to 'Nimbus Match'."""
+    # 3. PANOSE and sFamilyClass
+    dst["OS/2"].sFamilyClass = ref["OS/2"].sFamilyClass
+    panose_attrs = (
+        "bFamilyType",
+        "bSerifStyle",
+        "bWeight",
+        "bProportion",
+        "bContrast",
+        "bStrokeVariation",
+        "bArmStyle",
+        "bLetterForm",
+        "bMidline",
+        "bXHeight",
+    )
+    for attr in panose_attrs:
+        setattr(dst["OS/2"].panose, attr, getattr(ref["OS/2"].panose, attr))
+
+    # 4. Code page ranges
+    dst["OS/2"].ulCodePageRange1 = ref["OS/2"].ulCodePageRange1
+    dst["OS/2"].ulCodePageRange2 = ref["OS/2"].ulCodePageRange2
+
+    # 5. Maintain fsType = 0x0004 (Preview & Print embedding)
+    dst["OS/2"].fsType = 0x0004
+
+    # 6. Remove obsolete HP printer table PCLT if present
+    if "PCLT" in dst:
+        del dst["PCLT"]
+
+    # 7. Recalculate Unicode ranges and explicitly clear Bit 48 (CJK Symbols and Punctuation)
+    dst["OS/2"].recalcUnicodeRanges(dst)
+    dst["OS/2"].ulUnicodeRange2 &= ~(1 << 16)
+
+    # 8. Recalculate average character width
+    dst["OS/2"].recalcAvgCharWidth(dst)
+
+
+def set_font_names(font: TTFont, style_name: str, version: str = "1.000") -> None:
+    """Set font naming metadata to 'Nimbus Match' with specified version."""
     family = "Nimbus Match"
 
     style_str_map = {
@@ -272,14 +328,27 @@ def set_font_names(font: TTFont, style_name: str) -> None:
             rec for rec in font["name"].names if rec.nameID not in target_nids
         ]
 
+    # Parse numeric version for head.fontRevision
+    rev = 1.0
+    try:
+        clean_v = version.split("-")[0].strip().lstrip("v")
+        parts = clean_v.split(".")
+        if len(parts) >= 2:
+            rev = float(f"{parts[0]}.{parts[1]}")
+        else:
+            rev = float(parts[0])
+    except (ValueError, IndexError):
+        rev = 1.0
+    font["head"].fontRevision = rev
+
     for nid, text in (
         (1, family),  # Font Family
         (2, subfamily_user),  # Font Subfamily
-        (3, f"1.000;{ps_name}"),  # Unique ID
+        (3, f"{version};{ps_name}"),  # Unique ID
         (4, full_name),  # Full Name
         (
             5,
-            "Version 1.000; Nimbus Match Times New Roman metric compatible font",
+            f"Version {version}; Nimbus Match Times New Roman metric compatible font",
         ),  # Version
         (6, ps_name),  # PostScript Name
         (16, family),  # Preferred Family
@@ -291,12 +360,19 @@ def set_font_names(font: TTFont, style_name: str) -> None:
         except (KeyError, ValueError, AttributeError):
             pass
 
+    if "CFF " in font:
+        try:
+            font["CFF "].cff.topDictIndex[0].version = str(version)
+        except Exception:
+            pass
+
 
 def build_single_style(
     nimbus_path: str | Path,
     ref_path: str | Path,
     out_path: str | Path,
     style_name: str,
+    version: str = "1.000",
 ) -> None:
     """Process a single font style (Regular, Bold, Italic, BoldItalic)."""
     nimbus_path = Path(nimbus_path)
@@ -331,8 +407,8 @@ def build_single_style(
     pairs, skipped = build_kerning(nimbus, reference)
     liga_removed = remove_feature(nimbus, "GSUB", "liga")
     advances_changed, total_shared = copy_all_shared_advances(nimbus, reference)
-    copy_vertical_metrics(nimbus, reference)
-    set_font_names(nimbus, style_name)
+    copy_metrics_and_os2_metadata(nimbus, reference)
+    set_font_names(nimbus, style_name, version=version)
 
     # Ensure TopDict.defaults is [0.001, 0, 0, 0.001, 0, 0] before saving so DictCompiler
     # serializes FontMatrix [1/2048, 0, 0, 1/2048, 0, 0] into the binary CFF table
@@ -344,6 +420,7 @@ def build_single_style(
 
     print(f"[{style_name}] Successfully built {out_path.name}")
     print(f"  UPEM: {old_upem} -> {target_upem}")
+    print(f"  Version: {version} (fontRevision: {nimbus['head'].fontRevision:.2f})")
     print(f"  Shared codepoints: {total_shared}, advances updated: {advances_changed}")
     print(f"  Kerning pairs: {len(pairs)} installed, {skipped} skipped")
     print(f"  GSUB liga features removed: {liga_removed}")
@@ -364,9 +441,12 @@ def main() -> None:
         help="Style name",
     )
     ap.add_argument("--out", required=True, help="Output OTF file path")
+    ap.add_argument("--version", default="1.000", help="Font version string")
     args = ap.parse_args()
 
-    build_single_style(args.nimbus, args.reference, args.out, args.style)
+    build_single_style(
+        args.nimbus, args.reference, args.out, args.style, version=args.version
+    )
 
 
 if __name__ == "__main__":
