@@ -11,8 +11,8 @@ When creating Git commits in this repository, agents **MUST** strictly adhere to
 ### 1. Author & Committer Metadata
 
 - **Author**: The human user (`Ivana <ivana.gyro@gmail.com>`).
-- **Committer**: The AI model executing the commit (`Gemini 3.6 Flash <gemini@google.com>`).
-- **Co-author**: The AI model (`Co-authored-by: Gemini 3.6 Flash <gemini@google.com>`).
+- **Committer**: The AI model executing the commit (`Gemini 3.8 Flash <gemini@google.com>`).
+- **Co-author**: The AI model (`Co-authored-by: Gemini 3.8 Flash <gemini@google.com>`).
 
 ### 2. Atomic Commits & Message Standards
 
@@ -31,11 +31,11 @@ To ensure the commit metadata is accurately recorded, use the following `git com
 ```bash
 git -c user.name="Ivana" \
     -c user.email="ivana.gyro@gmail.com" \
-    -c committer.name="Gemini 3.6 Flash" \
+    -c committer.name="Gemini 3.8 Flash" \
     -c committer.email="gemini@google.com" \
     commit -m "<type>(<scope>): <short summary>" \
            -m "<Context on why/what if non-trivial>" \
-           -m "Co-authored-by: Gemini 3.6 Flash <gemini@google.com>"
+           -m "Co-authored-by: Gemini 3.8 Flash <gemini@google.com>"
 ```
 
 ---
