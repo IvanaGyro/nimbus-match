@@ -17,6 +17,7 @@ dependencies = [
   "matplotlib>=3.11.1,<4",
   "pillow>=12.3,<13",
   "requests>=2.34.2,<3",
+  "uharfbuzz>=0.53,<1",
 ]
 
 optional-dependencies.dev = [

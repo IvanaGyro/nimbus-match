@@ -12,9 +12,25 @@ Covers:
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from fontTools.ttLib import TTFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
+
+IMAGE_WIDTH = 640
+PADDING = 28
+SAMPLE_SIZE = 48
+RED = (220, 45, 55)
+BLUE = (15, 110, 220)
+OVERLAP = (188, 194, 202)
+INK = (30, 40, 55)
+
+
+def font_family(path: Path) -> str:
+    with TTFont(path) as font:
+        return font["name"].getBestFamilyName() or path.stem
+
 
 TEST_SAMPLES = [
     (
@@ -67,10 +83,12 @@ def load_ui_font(size: int = 16) -> ImageFont.ImageFont | ImageFont.FreeTypeFont
         try:
             return ImageFont.truetype("DejaVuSans.ttf", size)
         except OSError:
-            return ImageFont.load_default()
+            return ImageFont.load_default(size=size)
 
 
-def find_ref_font_path(candidates: list[str], fonts_dir: Path) -> tuple[Path, str]:
+def find_ref_font_path(
+    candidates: list[str], fonts_dir: Path, *, require_times_new_roman: bool = False
+) -> tuple[Path, str]:
     """Locate reference font (Times New Roman on Windows/macOS or Tinos / Liberation fallback)."""
     search_dirs = [
         Path(r"C:\Windows\Fonts"),
@@ -79,60 +97,103 @@ def find_ref_font_path(candidates: list[str], fonts_dir: Path) -> tuple[Path, st
         Path("/Library/Fonts"),
     ]
 
-    for sdir in search_dirs:
-        if sdir.exists():
-            for cand in candidates:
-                if (sdir / cand).exists():
-                    return sdir / cand, "Times New Roman"
-                if "times.ttf" in cand and (sdir / "Times New Roman.ttf").exists():
-                    return sdir / "Times New Roman.ttf", "Times New Roman"
-                if (
-                    "timesbd.ttf" in cand
-                    and (sdir / "Times New Roman Bold.ttf").exists()
-                ):
-                    return sdir / "Times New Roman Bold.ttf", "Times New Roman"
-                if (
-                    "timesi.ttf" in cand
-                    and (sdir / "Times New Roman Italic.ttf").exists()
-                ):
-                    return sdir / "Times New Roman Italic.ttf", "Times New Roman"
-                if (
-                    "timesbi.ttf" in cand
-                    and (sdir / "Times New Roman Bold Italic.ttf").exists()
-                ):
-                    return sdir / "Times New Roman Bold Italic.ttf", "Times New Roman"
-
-    for cand in candidates:
-        if (fonts_dir / cand).exists():
-            ref_name = (
-                "Tinos"
-                if "Tinos" in cand
-                else ("Liberation Serif" if "Liberation" in cand else "Reference")
-            )
-            return fonts_dir / cand, ref_name
+    aliases = {
+        "times.ttf": "Times New Roman.ttf",
+        "timesbd.ttf": "Times New Roman Bold.ttf",
+        "timesi.ttf": "Times New Roman Italic.ttf",
+        "timesbi.ttf": "Times New Roman Bold Italic.ttf",
+    }
+    for sdir in [*search_dirs, fonts_dir]:
+        for cand in candidates:
+            for filename in dict.fromkeys([cand, aliases.get(cand, cand)]):
+                path = sdir / filename
+                if not path.is_file():
+                    continue
+                family = font_family(path)
+                if require_times_new_roman and family != "Times New Roman":
+                    continue
+                return path, family
 
     raise FileNotFoundError(
-        f"Could not find reference font from candidates {candidates}"
+        "Times New Roman is required for README comparisons; install it locally."
+        if require_times_new_roman
+        else f"Could not find reference font from candidates {candidates}"
     )
+
+
+def wrap_sample(text: str, fonts: list, max_width: int) -> list[str]:
+    """Use identical line breaks and allow room for both fonts' ink and advances."""
+    lines = []
+    line = ""
+    for char in text:
+        candidate = line + char
+        if line and any(
+            max(font.getlength(candidate), font.getbbox(candidate)[2]) > max_width
+            for font in fonts
+        ):
+            lines.append(line.rstrip())
+            line = char.lstrip()
+        else:
+            line = candidate
+    if line:
+        lines.append(line.rstrip())
+    return lines
+
+
+def composite_overlay(
+    reference: Image.Image, nimbus: Image.Image, background: Image.Image | None = None
+) -> Image.Image:
+    """Color shared coverage light gray and exclusive coverage red/blue, symmetrically."""
+    shared = ImageChops.darker(reference, nimbus)
+    masks = (
+        shared,
+        ImageChops.subtract(reference, nimbus),
+        ImageChops.subtract(nimbus, reference),
+    )
+    clear = ImageChops.invert(ImageChops.lighter(reference, nimbus))
+    background = (
+        background
+        if background is not None
+        else Image.new("RGB", reference.size, "white")
+    )
+    channels = []
+    for channel, base in enumerate(background.split()):
+        result = ImageChops.multiply(base, clear)
+        for mask, color in zip(masks, (OVERLAP, RED, BLUE)):
+            contribution = mask.point(
+                [round(value * color[channel] / 255) for value in range(256)]
+            )
+            result = ImageChops.add(result, contribution)
+        channels.append(result)
+    return Image.merge("RGB", channels)
+
+
+def draw_overlay(image: Image.Image, xy: tuple, text: str, fonts: list) -> None:
+    bounds = [font.getbbox(text, anchor="ls") for font in fonts]
+    top = max(0, math.floor(xy[1] + min(box[1] for box in bounds)))
+    bottom = min(image.height, math.ceil(xy[1] + max(box[3] for box in bounds)))
+    if top >= bottom:
+        return
+    region = (0, top, image.width, bottom)
+    masks = []
+    for font in fonts:
+        mask = Image.new("L", (image.width, bottom - top))
+        ImageDraw.Draw(mask).text(
+            (xy[0], xy[1] - top), text, font=font, fill=255, anchor="ls"
+        )
+        masks.append(mask)
+    image.paste(composite_overlay(*masks, image.crop(region)), (0, top))
 
 
 def generate_comparison_image(
     fonts_dir: str | Path,
     out_file: str | Path,
     style_filter: str | None = None,
+    *,
+    require_times_new_roman: bool = False,
 ) -> None:
     fonts_dir = Path(fonts_dir)
     out_file = Path(out_file)
-
-    width = 1750
-    padding = 30
-    line_gap = 32
-    sample_font_size = 23
-
-    label_font_title = load_ui_font(28)
-    label_font_style = load_ui_font(22)
-    label_font_script = load_ui_font(16)
-    label_font_tag = load_ui_font(13)
 
     target_styles = STYLES
     if style_filter:
@@ -140,110 +201,50 @@ def generate_comparison_image(
         if not target_styles:
             raise ValueError(f"Style '{style_filter}' not found in {STYLES}")
 
-    height = 140 + len(target_styles) * (60 + len(TEST_SAMPLES) * 160) + 200
-
-    img = Image.new("RGB", (width, height), color=(248, 249, 250))
-    draw = ImageDraw.Draw(img)
-
-    draw.rectangle([(0, 0), (width, 100)], fill=(20, 26, 38))
-    draw.text(
-        (padding, 20),
-        "Nimbus Match vs Times New Roman — Visual Overlap Comparison",
-        fill=(255, 255, 255),
-        font=label_font_title,
-    )
-    draw.text(
-        (padding, 60),
-        "Red = Reference Font (Times New Roman / Tinos) | Blue = Nimbus Match",
-        fill=(175, 190, 210),
-        font=label_font_script,
-    )
-
-    y = 120
-
+    panels = []
     for style_title, nimbus_filename, ref_candidates in target_styles:
         nimbus_path = fonts_dir / nimbus_filename
         if not nimbus_path.exists():
-            print(f"Warning: Skipping {style_title} (missing {nimbus_filename})")
-            continue
-
-        try:
-            ref_path, ref_name = find_ref_font_path(ref_candidates, fonts_dir)
-        except FileNotFoundError as e:
-            print(f"Warning: Skipping {style_title} ({e})")
-            continue
-
-        font_nimbus = ImageFont.truetype(str(nimbus_path), sample_font_size)
-        font_ref = ImageFont.truetype(str(ref_path), sample_font_size)
-
-        draw.rectangle([(padding, y), (width - padding, y + 36)], fill=(225, 232, 242))
-        draw.text(
-            (padding + 15, y + 6),
-            f"Style: {style_title} (Reference: {ref_name})",
-            fill=(15, 30, 55),
-            font=label_font_style,
+            raise FileNotFoundError(nimbus_path)
+        if font_family(nimbus_path) != "Nimbus Match":
+            raise ValueError(f"Expected a Nimbus Match font: {nimbus_path}")
+        ref_path, ref_name = find_ref_font_path(
+            ref_candidates, fonts_dir, require_times_new_roman=require_times_new_roman
         )
-        y += 48
-
+        fonts = [
+            ImageFont.truetype(str(path), SAMPLE_SIZE)
+            for path in (ref_path, nimbus_path)
+        ]
+        samples = []
         for script_name, sample_text in TEST_SAMPLES:
-            draw.text(
-                (padding + 15, y),
-                f"• {script_name}",
-                fill=(70, 80, 95),
-                font=label_font_script,
-            )
-            y += 24
+            lines = wrap_sample(sample_text, fonts, IMAGE_WIDTH - 2 * PADDING)
+            samples.append((script_name, lines))
+        panels.append((style_title, ref_name, fonts, samples))
 
-            x_text = padding + 260
-
-            bbox_ref = draw.textbbox((x_text, y), sample_text, font=font_ref)
-            bbox_nim = draw.textbbox((x_text, y), sample_text, font=font_nimbus)
-
-            draw.text(
-                (padding + 15, y + 2),
-                f"Overlap (Red: {ref_name}, Blue: Nimbus)",
-                fill=(110, 30, 140),
-                font=label_font_tag,
-            )
-
-            rgba_layer = Image.new("RGBA", (width, height), color=(0, 0, 0, 0))
-            rgba_draw = ImageDraw.Draw(rgba_layer)
-
-            rgba_draw.text(
-                (x_text, y), sample_text, fill=(220, 20, 20, 140), font=font_ref
-            )
-            rgba_draw.text(
-                (x_text, y), sample_text, fill=(10, 100, 230, 140), font=font_nimbus
-            )
-
-            img.paste(rgba_layer, (0, 0), rgba_layer)
-            y += line_gap
-
-            ref_w = bbox_ref[2] - bbox_ref[0]
-            nim_w = bbox_nim[2] - bbox_nim[0]
-            diff_w = abs(ref_w - nim_w)
-
-            indicator_text = f"Metric Match: Ref Width = {ref_w}px | Nimbus Match Width = {nim_w}px (Δ = {diff_w}px)"
-            draw.text(
-                (x_text, y), indicator_text, fill=(90, 105, 120), font=label_font_tag
-            )
-
-            draw.line(
-                [(padding + 15, y + 18), (width - padding - 15, y + 18)],
-                fill=(230, 235, 240),
-                width=1,
-            )
-            y += 26
-
-        y += 20
-
-    final_height = y + 30
-    img_cropped = img.crop((0, 0, width, final_height))
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    img_cropped.save(out_file)
-    print(
-        f"Successfully generated comparison image ({width}x{final_height}px): {out_file}"
+    height = PADDING + sum(
+        200 + sum(66 + 64 * len(lines) for _, lines in samples)
+        for _, _, _, samples in panels
     )
+    img = Image.new("RGB", (IMAGE_WIDTH, height), "white")
+    draw = ImageDraw.Draw(img)
+    y = PADDING
+    for style_title, ref_name, fonts, samples in panels:
+        draw.text((PADDING, y), style_title, fill=INK, font=load_ui_font(36))
+        draw.text((PADDING, y + 48), ref_name, fill=RED, font=load_ui_font(32))
+        draw.text((PADDING, y + 88), "Nimbus Match", fill=BLUE, font=load_ui_font(32))
+        draw.text((PADDING, y + 132), "Gray = overlap", fill=INK, font=load_ui_font(30))
+        y += 200
+        for script_name, lines in samples:
+            draw.rectangle((0, y, IMAGE_WIDTH, y + 46), fill=(235, 240, 247))
+            draw.text((PADDING, y + 4), script_name, fill=INK, font=load_ui_font(32))
+            y += 66
+            for line in lines:
+                draw_overlay(img, (PADDING, y + 44), line, fonts)
+                y += 64
+
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    img.save(out_file)
+    print(f"Generated comparison ({IMAGE_WIDTH}x{height}px): {out_file}")
 
 
 def main() -> None:
@@ -257,9 +258,19 @@ def main() -> None:
     ap.add_argument(
         "--style", default=None, help="Specific style to render (e.g. Regular)"
     )
+    ap.add_argument(
+        "--require-times-new-roman",
+        action="store_true",
+        help="Disable reference fallbacks",
+    )
     args = ap.parse_args()
 
-    generate_comparison_image(args.fonts_dir, args.out, style_filter=args.style)
+    generate_comparison_image(
+        args.fonts_dir,
+        args.out,
+        style_filter=args.style,
+        require_times_new_roman=args.require_times_new_roman,
+    )
 
 
 if __name__ == "__main__":
