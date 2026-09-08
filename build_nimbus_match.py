@@ -7,8 +7,8 @@ Inputs:
   - Nimbus Roman OTF font files (URW Base35)
   - Tinos / reference TTF font files (metric reference)
 
-The script does NOT read or copy anything from proprietary Times New Roman.
-All font binaries are processed dynamically.
+The build reads Nimbus Roman and Tinos, without loading proprietary Times New Roman.
+Explicit advance corrections use previously measured scalar values only.
 """
 
 from __future__ import annotations
@@ -19,9 +19,24 @@ from pathlib import Path
 from fontTools.cffLib import TopDict
 from fontTools.cffLib import specializer as cffSpecializer
 from fontTools.feaLib.builder import addOpenTypeFeaturesFromString
+from fontTools.misc.roundTools import otRound
 from fontTools.ttLib import TTFont, newTable
 from fontTools.ttLib.scaleUpem import scale_upem
 from fontTools.ttLib.tables import _k_e_r_n
+
+# U+FB00 is present in Nimbus Roman but absent from Tinos. Values were measured
+# from Times New Roman 7.12 at 2048 units/em; no TNR file is needed by the build.
+TNR_FF_ADVANCES = {"Regular": 1237, "Bold": 1200, "Italic": 1137, "BoldItalic": 1225}
+
+
+def apply_tnr_advance_corrections(font: TTFont, style_name: str) -> None:
+    """Correct the encoded ff ligature; preserve outlines and all other advances."""
+    glyph = (font.getBestCmap() or {}).get(0xFB00)
+    if glyph is None:
+        return
+    advance = TNR_FF_ADVANCES[style_name.replace(" ", "")]
+    _, lsb = font["hmtx"][glyph]
+    font["hmtx"][glyph] = (otRound(advance * font["head"].unitsPerEm / 2048), lsb)
 
 
 def _scale_cff_args_exact(args: list, factor: float) -> None:
@@ -482,6 +497,7 @@ def build_single_style(
     pairs, skipped = build_kerning(nimbus, reference)
     liga_removed = remove_feature(nimbus, "GSUB", "liga")
     advances_changed, total_shared = copy_all_shared_advances(nimbus, reference)
+    apply_tnr_advance_corrections(nimbus, style_name)
     copy_metrics_and_os2_metadata(nimbus, reference, style_name=style_name)
     set_font_names(nimbus, style_name, version=version)
 
