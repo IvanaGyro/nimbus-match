@@ -3,9 +3,9 @@
 [![Weekly Font Build](https://github.com/IvanaGyro/nimbus-match/actions/workflows/weekly_font_release.yml/badge.svg)](https://github.com/IvanaGyro/nimbus-match/actions/workflows/weekly_font_release.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-**Nimbus Match** combines Nimbus Roman letterforms with Tinos metrics in four styles: **Regular**, **Bold**, **Italic**, and **Bold Italic**.
+**Nimbus Match** is a **Times New Roman metric-compatible font**, designed to look closer to TNR than Tinos and other metric-compatible alternatives. It combines Nimbus Roman letterforms with Tinos metrics in four styles: **Regular**, **Bold**, **Italic**, and **Bold Italic**.
 
-It uses [Tinos](https://github.com/googlefonts/tinos) metrics at 2048 units per em, with explicit corrections toward **Times New Roman** compatibility. The comparisons below show remaining differences.
+It uses [Tinos](https://github.com/googlefonts/tinos) metrics at 2048 units per em, with explicit TNR corrections. The comparisons below show remaining metric and feature differences; application rendering can also vary.
 
 > [!TIP]
 > Download **`NimbusMatch.otc`** (OpenType Collection) from the latest [Release](https://github.com/IvanaGyro/nimbus-match/releases) to install all 4 font variants in 1 click!
