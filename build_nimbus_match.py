@@ -430,16 +430,17 @@ def set_font_names(font: TTFont, style_name: str, version: str = "1.000") -> Non
     except (ValueError, IndexError):
         rev = 1.0
     font["head"].fontRevision = rev
+    numeric_version = f"{rev:.3f}"
+    version_text = f"Version {numeric_version}"
+    if version != numeric_version:
+        version_text += f"; {version}"
 
     for nid, text in (
         (1, family),  # Font Family
         (2, subfamily_user),  # Font Subfamily
         (3, f"{version};{ps_name}"),  # Unique ID
         (4, full_name),  # Full Name
-        (
-            5,
-            f"Version {version}; Nimbus Match Times New Roman metric compatible font",
-        ),  # Version
+        (5, version_text),  # Numeric version plus optional build identifier
         (6, ps_name),  # PostScript Name
         (16, family),  # Preferred Family
         (17, subfamily_user),  # Preferred Subfamily
@@ -451,10 +452,12 @@ def set_font_names(font: TTFont, style_name: str, version: str = "1.000") -> Non
             pass
 
     if "CFF " in font:
-        try:
-            font["CFF "].cff.topDictIndex[0].version = str(version)
-        except Exception:
-            pass
+        cff = font["CFF "].cff
+        cff.fontNames = [ps_name]
+        top_dict = cff.topDictIndex[0]
+        top_dict.FamilyName = family
+        top_dict.FullName = full_name
+        top_dict.version = numeric_version
 
 
 def build_single_style(

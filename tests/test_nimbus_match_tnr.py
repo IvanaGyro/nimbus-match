@@ -92,12 +92,27 @@ def test_font_naming(style_name, font_file, ref_candidates):
     font = TTFont(font_path)
 
     name_table = font["name"]
-    family_names = [
-        record.toUnicode() for record in name_table.names if record.nameID in (1, 16)
-    ]
-    assert any("Nimbus Match" in name for name in family_names), (
-        f"Family name 'Nimbus Match' not found in {font_file}"
-    )
+    subfamily = "Bold Italic" if style_name == "BoldItalic" else style_name
+    expected_names = {
+        1: "Nimbus Match",
+        2: subfamily,
+        4: f"Nimbus Match {subfamily}",
+        6: f"NimbusMatch-{style_name}",
+        16: "Nimbus Match",
+        17: subfamily,
+    }
+    for name_id, expected in expected_names.items():
+        values = {
+            record.toUnicode()
+            for record in name_table.names
+            if record.nameID == name_id
+        }
+        assert values == {expected}, f"[{style_name}] Unexpected name ID {name_id}"
+
+    cff = font["CFF "].cff
+    assert cff.fontNames == [expected_names[6]]
+    assert cff.topDictIndex[0].FamilyName == expected_names[1]
+    assert cff.topDictIndex[0].FullName == expected_names[4]
 
 
 @pytest.mark.parametrize("style_name, font_file, ref_candidates", STYLES)
@@ -427,6 +442,13 @@ def test_version_metadata(style_name, font_file, ref_candidates):
     }
     assert 3 in name_records, f"[{style_name}] Missing nameID 3"
     assert 5 in name_records, f"[{style_name}] Missing nameID 5"
-    assert f"NimbusMatch-{style_name.replace(' ', '')}" in name_records[3]
-    assert "Nimbus Match Times New Roman metric compatible font" in name_records[5]
+    build_id, ps_name = name_records[3].split(";", 1)
+    assert ps_name == f"NimbusMatch-{style_name.replace(' ', '')}"
+    numeric_version = f"{font['head'].fontRevision:.3f}"
+    assert font["CFF "].cff.topDictIndex[0].version == numeric_version
+    expected_version = f"Version {numeric_version}"
+    if build_id != numeric_version:
+        expected_version += f"; {build_id}"
+    version_records = {rec.toUnicode() for rec in font["name"].names if rec.nameID == 5}
+    assert version_records == {expected_version}
     assert font["head"].fontRevision >= 1.0
