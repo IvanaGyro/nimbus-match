@@ -24,16 +24,18 @@ Regular style: **red = Times New Roman**, **blue = Nimbus Match**. Shared areas 
 
 Measured from the built **Nimbus Match Regular** and local **Times New Roman Regular** fonts. Values are font units (2048 per em); results may vary with font versions.
 
-![Nimbus Match vs. Times New Roman overlays of strikethrough, sub/superscripts, capital spacing, and small caps](nimbus_match_tnr_details.png)
+![Nimbus Match vs. Times New Roman overlays of strikethrough, sub/superscripts, capital spacing, and native versus synthetic small caps](nimbus_match_tnr_details.png)
 
 ### Key Differences
 
 - **Strikethrough:** Nimbus Match places the line lower (420 vs. 530).
 - **Sub / superscripts:** Nimbus Match drops subscripts less (154 vs. 293) and raises superscripts less (717 vs. 928). The image illustrates `OS/2` offsets; application rendering can differ.
 - **Capital spacing (`cpsp`):** The feature is enabled for both fonts. TNR adds spacing; Nimbus Match has no `cpsp` adjustment.
-- **Small caps (`smcp`):** The feature is enabled for both fonts. TNR substitutes small capitals; Nimbus Match keeps lowercase letters. The preview does not synthesize small caps.
+- **Small caps (`smcp`):** TNR uses native small-cap glyphs. Nimbus Match uses uppercase letters scaled to 80%, with the initial capital at full size, mimicking LibreOffice's Small Capitals case effect.
 
-Only supported characters are compared. The `cpsp` and `smcp` examples use HarfBuzz shaping and FreeType rendering.
+To reproduce the small-caps setup in LibreOffice, use `Times New Roman:smcp=1` for TNR and **Font Effects → Case → Small capitals** for Nimbus Match. These are [separate controls](https://software.sil.org/fonts/features/#libreoffice). XeLaTeX does not automatically synthesize small caps.
+
+Only supported characters are compared. HarfBuzz and FreeType render the illustrations; application rasterization may differ.
 
 ### Extra Characters
 

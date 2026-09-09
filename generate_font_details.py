@@ -23,6 +23,9 @@ from generate_comparison import (
 from render_font_sample import SUPERSAMPLE, FontRenderer, finish_mask, new_mask
 
 PANEL_SIZE = (IMAGE_WIDTH - 2 * PADDING, 150)
+# LibreOffice Writer uses 80% unless its legacy SmallCapsPercentage66 option is set.
+# https://github.com/LibreOffice/core/blob/bce0998afefdbc355585ca324285661a2170ba77/sw/source/core/txtnode/fntcap.cxx#L517-L523
+SMALL_CAPS_SCALE = 0.8
 
 
 def validate_font_pair(nimbus: TTFont, reference: TTFont) -> None:
@@ -39,15 +42,6 @@ def validate_font_pair(nimbus: TTFont, reference: TTFont) -> None:
 def glyph_advance(font: TTFont, codepoint: int) -> int | None:
     glyph = (font.getBestCmap() or {}).get(codepoint)
     return None if glyph is None else font["hmtx"][glyph][0]
-
-
-def has_feature(font: TTFont, table: str, tag: str) -> bool:
-    if table not in font or not font[table].table.FeatureList:
-        return False
-    return any(
-        record.FeatureTag == tag
-        for record in font[table].table.FeatureList.FeatureRecord
-    )
 
 
 def strike_mask(renderer: FontRenderer, font: TTFont) -> Image.Image:
@@ -102,6 +96,34 @@ def feature_mask(renderer: FontRenderer, text: str, tag: str) -> Image.Image:
     return finish_mask(mask)
 
 
+def synthetic_smallcaps_mask(renderer: FontRenderer) -> Image.Image:
+    """Mimic LibreOffice's synthetic small caps for the fixed 'Roman' specimen."""
+    mask = new_mask(PANEL_SIZE)
+    size, baseline = 104, 112
+    features = {"smcp": False, "c2sc": False}
+    advance = renderer.draw(mask, "R", (10, baseline), size, features)
+    renderer.draw(
+        mask, "OMAN", (10 + advance, baseline), size * SMALL_CAPS_SCALE, features
+    )
+    return finish_mask(mask)
+
+
+def smallcaps_masks(reference: FontRenderer, nimbus: FontRenderer) -> list[Image.Image]:
+    """Compare TNR's real small caps with Nimbus Match's configured synthetic fallback."""
+    glyphs = [
+        [glyph.glyph_id for glyph in reference.shape("Roman", {"smcp": enabled})]
+        for enabled in (False, True)
+    ]
+    if glyphs[0] == glyphs[1]:
+        raise ValueError(
+            "The TNR reference must provide native smcp glyphs for 'Roman'"
+        )
+    return [
+        feature_mask(reference, "Roman", "smcp"),
+        synthetic_smallcaps_mask(nimbus),
+    ]
+
+
 def generate_font_details(fonts_dir: Path, out_file: Path) -> None:
     nimbus_path = fonts_dir / "NimbusMatch-Regular.otf"
     reference_path, _ = find_ref_font_path(
@@ -119,7 +141,7 @@ def generate_font_details(fonts_dir: Path, out_file: Path) -> None:
                     strike_mask(renderer, font)
                     for renderer, font in zip(renderers, fonts)
                 ],
-                f"Position: TNR {reference['OS/2'].yStrikeoutPosition} · Nimbus {nimbus['OS/2'].yStrikeoutPosition}",
+                f"Position: TNR {reference['OS/2'].yStrikeoutPosition} · Nimbus Match {nimbus['OS/2'].yStrikeoutPosition}",
             )
         )
         for title, superscript, attr, label in (
@@ -133,7 +155,7 @@ def generate_font_details(fonts_dir: Path, out_file: Path) -> None:
                         script_mask(renderer, font, superscript)
                         for renderer, font in zip(renderers, fonts)
                     ],
-                    f"{label}: TNR {getattr(reference['OS/2'], attr)} · Nimbus {getattr(nimbus['OS/2'], attr)}",
+                    f"{label}: TNR {getattr(reference['OS/2'], attr)} · Nimbus Match {getattr(nimbus['OS/2'], attr)}",
                 )
             )
 
@@ -146,18 +168,14 @@ def generate_font_details(fonts_dir: Path, out_file: Path) -> None:
             (
                 "4. Capital spacing · cpsp",
                 [feature_mask(renderer, "CAPITALS", "cpsp") for renderer in renderers],
-                f"Added width: TNR {added[0]:+d} · Nimbus {added[1]:+d}",
+                f"Added: TNR {added[0]:+d} · Nimbus Match {added[1]:+d}",
             )
         )
-        statuses = [
-            "small caps" if has_feature(font, "GSUB", "smcp") else "lowercase"
-            for font in fonts
-        ]
         panels.append(
             (
-                "5. Small caps · smcp",
-                [feature_mask(renderer, "Roman", "smcp") for renderer in renderers],
-                f"TNR: {statuses[0]} · Nimbus: {statuses[1]}",
+                "5. Small caps · LibreOffice",
+                smallcaps_masks(*renderers),
+                "TNR: smcp · Nimbus Match: scaled (80%)",
             )
         )
 

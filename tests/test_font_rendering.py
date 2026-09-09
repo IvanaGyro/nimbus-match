@@ -3,6 +3,7 @@ from fontTools.feaLib.builder import addOpenTypeFeaturesFromString
 from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 
+from generate_font_details import smallcaps_masks
 from render_font_sample import FontRenderer, finish_mask, new_mask
 
 
@@ -12,7 +13,9 @@ def renderer_factory(tmp_path):
         builder = FontBuilder(1000, isTTF=True)
         names = [".notdef", "A", "a", "a.sc"]
         builder.setupGlyphOrder(names)
-        builder.setupCharacterMap({ord("A"): "A", ord("a"): "a"})
+        builder.setupCharacterMap(
+            {**{ord(c): "A" for c in "AROMN"}, **{ord(c): "a" for c in "aomn"}}
+        )
         glyphs = {}
         for name, height in zip(names, (700, 700, 400, 500)):
             pen = TTGlyphPen(None)
@@ -75,3 +78,23 @@ def test_smcp_uses_substituted_glyph_outlines(renderer_factory):
 def test_absent_features_do_not_invent_spacing_or_small_caps(renderer_factory):
     renderer = renderer_factory(False)
     assert renderer.shape("AAa", {"cpsp": True, "smcp": True}) == renderer.shape("AAa")
+
+
+def test_comparison_uses_native_and_synthetic_small_caps(renderer_factory):
+    native, synthetic = smallcaps_masks(renderer_factory(True), renderer_factory(False))
+    # The initial capital stays identical. The suffix uses 500-unit native
+    # outlines versus 700-unit uppercase outlines scaled to 80% (560 units).
+    assert (
+        native.crop((0, 0, 70, 150)).tobytes()
+        == synthetic.crop((0, 0, 70, 150)).tobytes()
+    )
+    native_suffix = native.crop((72, 0, 584, 150)).getbbox()
+    synthetic_suffix = synthetic.crop((72, 0, 584, 150)).getbbox()
+    assert synthetic_suffix[1] < native_suffix[1]
+    assert synthetic_suffix[2] < native_suffix[2]
+
+
+def test_comparison_requires_real_small_caps_in_reference(renderer_factory):
+    renderer = renderer_factory(False)
+    with pytest.raises(ValueError, match="native smcp"):
+        smallcaps_masks(renderer, renderer)
