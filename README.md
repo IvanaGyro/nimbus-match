@@ -5,7 +5,7 @@
 
 **Nimbus Match** is a **Times New Roman metric-compatible font**, designed to look closer to TNR than Tinos and other metric-compatible alternatives. It combines Nimbus Roman letterforms with Tinos metrics in four styles: **Regular**, **Bold**, **Italic**, and **Bold Italic**.
 
-It uses [Tinos](https://github.com/googlefonts/tinos) metrics at 2048 units per em, with explicit TNR corrections. The comparisons below show remaining metric and feature differences; application rendering can also vary.
+It uses [Tinos](https://github.com/googlefonts/tinos) metrics at 2048 units per em. The comparisons below show remaining metric and feature differences; application rendering can also vary.
 
 > [!TIP]
 > Download **`NimbusMatch.otc`** (OpenType Collection) from the latest [Release](https://github.com/IvanaGyro/nimbus-match/releases) to install all 4 font variants in 1 click!
@@ -37,12 +37,6 @@ To reproduce the small-caps setup in LibreOffice, use `Times New Roman:smcp=1` f
 
 Only supported characters are compared. HarfBuzz and FreeType render the illustrations; application rasterization may differ.
 
-### Extra Characters
-
-Of Nimbus Roman's 122 entries absent from Tinos, only `ﬀ` (U+FB00) is encoded in the tested TNR 7.12 fonts. Nimbus Match uses fixed TNR advance widths for it: **1237 / 1200 / 1137 / 1225** (Regular / Bold / Italic / Bold Italic). The build uses these constants without reading TNR.
-
-The other 121 entries retain Nimbus Roman's scaled metrics as extra coverage. TNR compatibility applies to shared characters; font fallback can differ for the extras.
-
 <details>
 <summary>Regenerate the comparisons</summary>
 
@@ -60,7 +54,7 @@ pixi run python generate_font_details.py
 ## ✨ Features
 
 - **4 Core Font Styles**: Regular, Bold, Italic, Bold Italic.
-- **Advance Widths**: Copies Tinos widths, with fixed TNR corrections for `ﬀ` across all 4 styles.
+- **Advance Widths**: Copies Tinos widths across all 4 styles.
 - **UPEM Rescaling**: Rescales 1000 UPEM PostScript fonts to standard 2048 UPEM TrueType grids for high-precision metric alignment.
 - **Kerning & GPOS Support**: Preserves and scales 800+ kerning pairs per font style.
 - **OpenType Collection (`.otc`)**: Bundles all 4 styles into `NimbusMatch.otc` for 1-click installation across Windows, macOS, and Linux.
