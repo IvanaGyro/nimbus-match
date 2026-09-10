@@ -39,9 +39,9 @@ Keep authentic source attribution and replace derivative product names in name/C
 
 ## Release contract (corrected 2026-09-11)
 
-Each family releases independently, only when its own upstream source font files change. Compare the SHA-256 hashes of all four Nimbus Roman or TeX Gyre Termes OTFs with that family's latest public BUILD-INFO style records. Changes to Tinos, build code, configuration, notices, or unrelated files in upstream archives do not by themselves publish a release. Preserve archive hashes and build fingerprints for reproducibility and verification, not as release triggers.
+Each family releases independently when its own upstream source font files change, or when Tinos or shared build code changes. Shared changes trigger both families. Compare the SHA-256 hashes of all four Nimbus Roman or TeX Gyre Termes OTFs with that family's latest public BUILD-INFO style records. Compare Tinos input identity and a separate code fingerprint against each family’s own last manifest. The code fingerprint covers package code, family configurations/notices, dependency configuration/lockfile and release workflow, but excludes outline inputs and documentation. Preserve the full build fingerprint for publication verification. Legacy manifests without the separate code fingerprint trigger one release per family to establish this baseline. Unrelated files in upstream archives do not trigger a release.
 
-Use independent numeric counters and tags: `nimbus-match-v1.003`, `termes-match-v1.003`, and subsequent family-specific increments. Existing combined v1.002 manifests seed each counter and source baseline, so migration alone does not republish fonts. Search paginated public release history separately for each family's manifest, ignoring drafts and prereleases.
+Use independent numeric counters and tags: `nimbus-match-v1.003`, `termes-match-v1.003`, and subsequent family-specific increments. Existing combined v1.002 manifests seed each counter and source baseline, while the new shared-code fingerprint establishes its baseline on the next release. Search paginated public release history separately for each family's manifest, ignoring drafts and prereleases.
 
 Each family release publishes:
 
@@ -53,7 +53,7 @@ Each family release publishes:
 
 Resolve inputs once, select changed families, and build them in read-only matrix jobs. Separate write-scoped publisher jobs validate and upload only their selected family's assets. Reuse only matching family drafts; reject public-release overwrites and unrelated drafts. Validate downloaded draft packages and verify public downloads, checksums and tag targets after publication. Workflow concurrency serializes release runs.
 
-Manual runs can select one family or both. Forced builds of unchanged sources produce development artifacts only. A changed selected family may publish independently. If no sources changed, skip builds and publication. Existing public tags remain unchanged. GitHub's global latest-release alias cannot represent both families; documentation uses explicit versioned downloads and release history instead.
+Manual runs can select one family or both. Forced builds of unchanged sources and code produce development artifacts only. A changed selected family may publish independently. If neither sources nor shared dependencies changed, skip builds and publication. Existing public tags remain unchanged. GitHub's global latest-release alias cannot represent both families; documentation uses explicit versioned downloads and release history instead.
 
 ## Verification evidence
 
@@ -64,7 +64,7 @@ Completed locally:
 - Independent and combined builds of both families. Both build orders produce byte-identical OTFs. A guarded test permits only explicitly supplied font inputs/output during construction.
 - All four Nimbus styles exactly match the original builder's normalized outlines, advances, kern, GSUB and GPOS, apart from deliberate naming/version/timestamp handling.
 - Required tests cover Unicode advances, vertical metrics, coverage preservation, future accented-character prediction, feature-enabled shaping, capital positioning, style identities, serialized CFF matrices and actual ZIP/OTC contents. Missing release artifacts fail rather than skip.
-- 56 required tests pass after the independent-release correction. The 54 optional local TNR tests pass separately; they are explicitly skipped in public build testing.
+- 60 required tests pass after the independent-release correction. The 54 optional local TNR tests pass separately; they are explicitly skipped in public build testing.
 - LibreOffice opened a temporary document embedding all eight OTF styles. Its PDF export contains all eight distinct PostScript identities and correctly renders ordinary text, native Termes small caps and synthetic Nimbus small caps. No permanent font installation was needed.
 - Comparison PNGs were visually inspected for clipping and readability. The measured reference is local Times New Roman 7.12.
 - Mandatory `pixi run pre-commit run --all-files` and `pixi run pytest` checks pass before each logical commit.

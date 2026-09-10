@@ -92,6 +92,7 @@ def build_family(project, family_id, resolved, version, out_dir=None):
         },
     }
     manifest["build_fingerprint"] = resolved.get("build_fingerprint")
+    manifest["build_code_fingerprint"] = resolved.get("build_code_fingerprint")
     package(family, output, manifest)
     return output
 

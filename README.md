@@ -32,10 +32,10 @@ Use `--family nimbus-match` or `--family termes-match` to build independently. O
 
 The [Nimbus Match](families/nimbus-match/README.md) and [Termes Match](families/termes-match/README.md) pages show features that Times New Roman provides but each family lacks, plus measured metric differences. Comparisons explicitly identify their reference and never substitute Tinos for TNR.
 
-Weekly and manual CI compare each family's four upstream source font files against its own last public BUILD-INFO manifest. Nimbus Roman changes release Nimbus Match; TeX Gyre Termes changes release Termes Match. Tinos, build-code, configuration, documentation, or unrelated archive changes alone do not trigger publication.
+Weekly and manual CI compare each family's four upstream source font files against its own last public BUILD-INFO manifest. Nimbus Roman changes release Nimbus Match; TeX Gyre Termes changes release Termes Match. Tinos or shared build-code changes trigger both families. Build configuration, dependency locks, family configurations and notices are included in the code fingerprint; documentation and unrelated upstream archive changes do not trigger publication. Each family compares shared dependencies against its own last release, so a pending update is retained if only the other family has published.
 
 Each changed family gets its own release, numeric version counter, eight family assets and SHA256SUMS. Tags use `nimbus-match-v1.003` or `termes-match-v1.003` and advance independently from the existing v1.002 baseline. Published assets are checked by checksum and reopened after download. Existing releases are preserved.
 
-A manual run can check one family or both. `force_build` builds unchanged families as development artifacts only; it does not override the source-change requirement for publication. Build jobs remain read-only, and a separate publisher uploads only the selected family's validated assets.
+A manual run can check one family or both. `force_build` builds families with unchanged sources and build code as development artifacts only; it does not override release detection. Build jobs remain read-only, and a separate publisher uploads only the selected family's validated assets.
 
 Source credits and applicable font notices are maintained per family. Repository code is [AGPL-3.0-or-later](LICENSE).

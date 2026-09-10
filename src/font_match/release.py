@@ -91,6 +91,7 @@ def prepare(project, force=False, family="all"):
     shared.parent.mkdir(parents=True, exist_ok=True)
     shared.write_text(json.dumps(resolved, indent=2) + "\n", encoding="utf-8")
     digest = fingerprint(project, resolved["inputs"])
+    code_digest = fingerprint(project, {})
     commit = git(project, "rev-parse", "HEAD")
     selected = []
     for family_id in FAMILIES if family == "all" else [family]:
@@ -101,6 +102,13 @@ def prepare(project, force=False, family="all"):
             style: report["source_sha256"]
             for style, report in previous["styles"].items()
         }
+        # Compare shared dependencies against each family's own last release so a
+        # successful release of one family cannot consume the other's update.
+        if previous is not None:
+            changed |= (
+                previous.get("build_code_fingerprint") != code_digest
+                or previous["inputs"]["tinos"] != resolved["inputs"]["tinos"]
+            )
         if not changed and not force:
             continue
         # Existing combined manifests seed each family's independent counter.
@@ -131,6 +139,7 @@ def prepare(project, force=False, family="all"):
             "tag": f"{family_id}-v{version}",
             "commit": commit,
             "build_fingerprint": digest,
+            "build_code_fingerprint": code_digest,
             "source_hashes": current,
             "publish": changed,
         }
@@ -156,7 +165,7 @@ def publish(project, family_id):
     if inputs["family"] != family_id:
         raise ValueError("Prepared family differs from requested family")
     if not inputs.get("publish"):
-        print("Source unchanged; development artifacts only.")
+        print("Sources and build code unchanged; development artifacts only.")
         return
     if git(project, "rev-parse", "HEAD") != inputs["commit"]:
         raise ValueError("Checkout differs from tested release commit")
@@ -168,7 +177,7 @@ def publish(project, family_id):
     info = json.loads(
         (project / "dist" / family_id / f"{family.prefix}-BUILD-INFO.json").read_text()
     )
-    for key in ("version", "commit", "build_fingerprint"):
+    for key in ("version", "commit", "build_fingerprint", "build_code_fingerprint"):
         if info[key] != inputs[key]:
             raise ValueError(f"Mismatched {key} in {family_id}")
     if {s: r["source_sha256"] for s, r in info["styles"].items()} != inputs[

@@ -35,6 +35,8 @@ def release_state(tmp_path, monkeypatch):
         fid: {
             "family": fid,
             "version": "1.002",
+            "inputs": {"tinos": "same"},
+            "build_code_fingerprint": "changed-code",
             "styles": {s: {"source_sha256": h} for s, h in values.items()},
         }
         for fid, values in hashes.items()
@@ -54,7 +56,7 @@ def release_state(tmp_path, monkeypatch):
         }
     ]
     monkeypatch.setattr(
-        release, "resolve_inputs", lambda p: {"inputs": {"tinos": "changed"}}
+        release, "resolve_inputs", lambda p: {"inputs": {"tinos": "same"}}
     )
     monkeypatch.setattr(release, "fingerprint", lambda p, i: "changed-code")
     monkeypatch.setattr(release, "git", lambda *a: "commit")
@@ -284,3 +286,36 @@ def test_publisher_uploads_only_selected_family(
         for name, data in remote.items()
         if name != "SHA256SUMS"
     }
+
+
+@pytest.mark.parametrize("dependency", ["tinos", "code", "legacy-manifest"])
+def test_shared_dependency_change_releases_both(
+    tmp_path, capsys, release_state, dependency
+):
+    _, manifests, _ = release_state
+    for manifest in manifests.values():
+        if dependency == "tinos":
+            manifest["inputs"]["tinos"] = "old"
+        elif dependency == "code":
+            manifest["build_code_fingerprint"] = "old-code"
+        else:
+            del manifest["build_code_fingerprint"]
+    release.prepare(tmp_path)
+    assert json.loads(json.loads(capsys.readouterr().out)["families"]) == list(
+        release.FAMILIES
+    )
+    for fid in release.FAMILIES:
+        plan = json.loads((tmp_path / "build_temp" / f"{fid}-inputs.json").read_text())
+        assert plan["publish"] is True
+        assert plan["build_code_fingerprint"] == "changed-code"
+
+
+def test_shared_change_remains_pending_for_unreleased_family(
+    tmp_path, capsys, release_state
+):
+    _, manifests, _ = release_state
+    manifests["termes-match"]["build_code_fingerprint"] = "old-code"
+    release.prepare(tmp_path)
+    assert json.loads(json.loads(capsys.readouterr().out)["families"]) == [
+        "termes-match"
+    ]
