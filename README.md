@@ -6,8 +6,8 @@ Font builds read only the selected outline source and Tinos. Local Times New Rom
 
 | Family | Downloads | Details |
 | --- | --- | --- |
-| Nimbus Match | [Published releases](https://github.com/IvanaGyro/nimbus-match/releases) | [Features and comparisons](families/nimbus-match/README.md) |
-| Termes Match | Build locally; first combined release pending | [Features and comparisons](families/termes-match/README.md) |
+| Nimbus Match | [ZIP](https://github.com/IvanaGyro/nimbus-match/releases/latest/download/NimbusMatch.zip) · [OTC](https://github.com/IvanaGyro/nimbus-match/releases/latest/download/NimbusMatch.otc) | [Features and comparisons](families/nimbus-match/README.md) |
+| Termes Match | [ZIP](https://github.com/IvanaGyro/nimbus-match/releases/latest/download/TermesMatch.zip) · [OTC](https://github.com/IvanaGyro/nimbus-match/releases/latest/download/TermesMatch.otc) | [Features and comparisons](families/termes-match/README.md) |
 
 Install a family's four OTFs **or** its OTC. Choose one format to avoid duplicate installation. Each ZIP includes installation instructions, notices and a build manifest; individual OTF/OTC users should also download that family's NOTICES file.
 
