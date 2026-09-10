@@ -1,15 +1,15 @@
-name: Weekly Font Match Release
+name: Weekly Independent Font Releases
 on:
   schedule:
     - cron: '0 0 * * 0'
   workflow_dispatch:
     inputs:
       force_build:
-        description: Build even when input identity is unchanged
+        description: Build unchanged families as development artifacts (never publish them)
         type: boolean
         default: false
       family:
-        description: A single family produces development artifacts only
+        description: Check upstream changes for the selected family or both
         type: choice
         options: [all, nimbus-match, termes-match]
         default: all
@@ -23,9 +23,7 @@ jobs:
     runs-on: windows-latest
     outputs:
       should_build: ${{ steps.prepare.outputs.should_build }}
-      version: ${{ steps.prepare.outputs.version }}
       families: ${{ steps.prepare.outputs.families }}
-      publish: ${{ steps.prepare.outputs.publish }}
     steps:
       - uses: actions/checkout@v4
       - uses: prefix-dev/setup-pixi@v0.8.3
@@ -48,6 +46,7 @@ jobs:
           name: resolved-inputs
           path: |
             build_temp/inputs.json
+            build_temp/*-inputs.json
             build_temp/archives/*.zip
           if-no-files-found: error
   build:
@@ -67,7 +66,7 @@ jobs:
         with:
           name: resolved-inputs
           path: build_temp
-      - run: pixi run font-match build --family ${{ matrix.family }} --version ${{ needs.prepare.outputs.version }}
+      - run: pixi run font-match build --family ${{ matrix.family }} --inputs build_temp/${{ matrix.family }}-inputs.json
       - run: pixi run pytest --junitxml=build_temp/tests.xml
         env:
           FONT_MATCH_FAMILY: ${{ matrix.family }}
@@ -84,8 +83,12 @@ jobs:
           path: dist/${{ matrix.family }}/
           if-no-files-found: error
   publish:
+    strategy:
+      fail-fast: false
+      matrix:
+        family: ${{ fromJSON(needs.prepare.outputs.families) }}
     needs: [prepare, build]
-    if: needs.prepare.outputs.publish == 'true'
+    if: needs.prepare.outputs.should_build == 'true'
     runs-on: windows-latest
     permissions:
       contents: write
@@ -100,12 +103,8 @@ jobs:
           path: build_temp
       - uses: actions/download-artifact@v4
         with:
-          name: fonts-nimbus-match
-          path: dist/nimbus-match
-      - uses: actions/download-artifact@v4
-        with:
-          name: fonts-termes-match
-          path: dist/termes-match
-      - run: pixi run python -m font_match.release publish
+          name: fonts-${{ matrix.family }}
+          path: dist/${{ matrix.family }}
+      - run: pixi run python -m font_match.release publish --family ${{ matrix.family }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

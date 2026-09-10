@@ -37,20 +37,23 @@ Disable automatic `liga` for both families. Shaping measurements showed that Ter
 
 Keep authentic source attribution and replace derivative product names in name/CFF records. Termes uses GFL/LPPL notices from its actual archive. Nimbus retains the applicable URW/Artifex notices. The audited Tinos revision uses OFL-1.1, replacing the old documentation's Apache-license claim. Reference fonts are not distributed in font packages.
 
-## Release contract
+## Release contract (corrected 2026-09-11)
 
-One numeric project version and GitHub release contains separate `NimbusMatch` and `TermesMatch` assets. Start the project-owned sequence at `v1.001`; subsequent runs allocate the next version once. Upstream identity belongs in BUILD-INFO, not name ID 5.
+Each family releases independently, only when its own upstream source font files change. Compare the SHA-256 hashes of all four Nimbus Roman or TeX Gyre Termes OTFs with that family's latest public BUILD-INFO style records. Changes to Tinos, build code, configuration, notices, or unrelated files in upstream archives do not by themselves publish a release. Preserve archive hashes and build fingerprints for reproducibility and verification, not as release triggers.
 
-Each family publishes:
+Use independent numeric counters and tags: `nimbus-match-v1.003`, `termes-match-v1.003`, and subsequent family-specific increments. Existing combined v1.002 manifests seed each counter and source baseline, so migration alone does not republish fonts. Search paginated public release history separately for each family's manifest, ignoring drafts and prereleases.
+
+Each family release publishes:
 
 - Four individually named OTF styles.
 - An OTC containing exactly those four styles.
 - A ZIP containing the four OTFs, INSTALL.txt, notices and BUILD-INFO.
 - Separate `*-NOTICES.txt` and `*-BUILD-INFO.json` assets.
+- SHA256SUMS covering those eight family assets.
 
-A single SHA256SUMS covers the 16 family assets. The publisher uses an explicit allowlist, checks both families, rejects public-release overwrites and unrelated drafts, validates downloaded draft packages, then verifies the public URL, tag target, asset list, checksums and downloaded packages after publishing. Install OTFs or OTC as alternatives.
+Resolve inputs once, select changed families, and build them in read-only matrix jobs. Separate write-scoped publisher jobs validate and upload only their selected family's assets. Reuse only matching family drafts; reject public-release overwrites and unrelated drafts. Validate downloaded draft packages and verify public downloads, checksums and tag targets after publication. Workflow concurrency serializes release runs.
 
-Weekly/manual CI resolves inputs in one preparation job, builds/tests isolated family matrix jobs, and publishes only after both succeed. Workflow concurrency serializes version allocation/publication. A single-family manual run produces development artifacts. Release identity includes inputs and build code/configuration; README-only edits do not trigger duplicate releases. API errors propagate rather than being treated as absent releases.
+Manual runs can select one family or both. Forced builds of unchanged sources produce development artifacts only. A changed selected family may publish independently. If no sources changed, skip builds and publication. Existing public tags remain unchanged. GitHub's global latest-release alias cannot represent both families; documentation uses explicit versioned downloads and release history instead.
 
 ## Verification evidence
 
@@ -61,20 +64,20 @@ Completed locally:
 - Independent and combined builds of both families. Both build orders produce byte-identical OTFs. A guarded test permits only explicitly supplied font inputs/output during construction.
 - All four Nimbus styles exactly match the original builder's normalized outlines, advances, kern, GSUB and GPOS, apart from deliberate naming/version/timestamp handling.
 - Required tests cover Unicode advances, vertical metrics, coverage preservation, future accented-character prediction, feature-enabled shaping, capital positioning, style identities, serialized CFF matrices and actual ZIP/OTC contents. Missing release artifacts fail rather than skip.
-- 50 required tests pass. The 54 optional local TNR tests pass separately; they are explicitly skipped in public build testing.
+- 56 required tests pass after the independent-release correction. The 54 optional local TNR tests pass separately; they are explicitly skipped in public build testing.
 - LibreOffice opened a temporary document embedding all eight OTF styles. Its PDF export contains all eight distinct PostScript identities and correctly renders ordinary text, native Termes small caps and synthetic Nimbus small caps. No permanent font installation was needed.
 - Comparison PNGs were visually inspected for clipping and readability. The measured reference is local Times New Roman 7.12.
 - Mandatory `pixi run pre-commit run --all-files` and `pixi run pytest` checks pass before each logical commit.
 
-Completed public release verification:
+Historical combined-release verification (before the independent-release correction):
 
 - [Combined Actions run 34495243028](https://github.com/IvanaGyro/nimbus-match/actions/runs/34495243028) passed preparation, both isolated family builds/tests, and publication.
 - [Font Match v1.002](https://github.com/IvanaGyro/nimbus-match/releases/tag/v1.002) targets `0b889274dbf47cbf7fd42860cc8b96f77332fe04`. All 17 public assets were independently downloaded; their checksums, GitHub asset digests, tag target, manifests, ZIPs and OTCs passed verification.
 - The initial v1.001 assets also passed independent verification. Its workflow exposed a Windows legacy-encoding failure while decoding GitHub's UTF-8 response after publication. A separate fix and regression test preceded v1.002; v1.001 was not overwritten.
-- The project README now links directly to each family's latest ZIP and OTC.
+- The initial project README linked each family through GitHub's global latest alias; the independent-release correction replaces these with explicit v1.002 links and release history.
 - A subsequent non-forced preparation returned `should_build=false`, confirming unchanged inputs and build code do not create a duplicate release.
 
 ## Commit boundaries
 
-Keep the shared-engine extraction, input pinning, two-family build/packages, combined release workflow, and comparison/documentation work as separate logical commits. Preserve Ivana as author and the executing model as committer/co-author. Existing published tags remain unchanged.
+Keep the shared-engine extraction, input pinning, two-family build/packages, release workflow, and comparison work as separate logical commits. The independent-release correction is one logical change spanning detection, publication, regression tests and documentation. Preserve Ivana as author and the executing model as committer/co-author. Existing published tags remain unchanged.
 

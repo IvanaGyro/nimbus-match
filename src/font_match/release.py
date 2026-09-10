@@ -1,4 +1,4 @@
-"""Combined release preparation and verified draft publication."""
+"""Independent upstream-triggered family releases and verified publication."""
 
 import argparse
 import json
@@ -10,8 +10,8 @@ from pathlib import Path
 
 from .artifacts import validate
 from .cli import FAMILIES
-from .config import load_family
-from .upstream import fetch_json, resolve_inputs, sha256
+from .config import STYLES, load_family
+from .upstream import extract, fetch_json, resolve_inputs, sha256
 
 
 def git(project, *args):
@@ -47,110 +47,158 @@ def gh(project, *args):
     ).strip()
 
 
+def list_releases(repo):
+    releases = []
+    page = 1
+    while True:
+        batch = fetch_json(
+            f"https://api.github.com/repos/{repo}/releases?per_page=100&page={page}"
+        )
+        releases.extend(batch)
+        if len(batch) < 100:
+            return releases
+        page += 1
+
+
+def source_hashes(project, family, inputs):
+    sources = extract(
+        project, inputs[family.provider], list(family.sources.values()), family.id
+    )
+    return {
+        style: sha256(sources[name].read_bytes())
+        for style, name in family.sources.items()
+    }
+
+
+def latest_manifest(releases, family):
+    for release in releases:
+        if release["draft"] or release["prerelease"]:
+            continue
+        for asset in release["assets"]:
+            if asset["name"] == f"{family.prefix}-BUILD-INFO.json":
+                info = fetch_json(asset["browser_download_url"])
+                if info["family"] != family.id or set(info["styles"]) != set(STYLES):
+                    raise ValueError("Invalid published family manifest")
+                return info
+    return None
+
+
 def prepare(project, force=False, family="all"):
     repo = os.environ.get("GITHUB_REPOSITORY", "IvanaGyro/nimbus-match")
-    # A successful empty list means no releases. API/auth/network errors propagate.
-    releases = fetch_json(f"https://api.github.com/repos/{repo}/releases?per_page=100")
+    releases = list_releases(repo)
     resolved = resolve_inputs(project)
+    shared = project / "build_temp/inputs.json"
+    shared.parent.mkdir(parents=True, exist_ok=True)
+    shared.write_text(json.dumps(resolved, indent=2) + "\n", encoding="utf-8")
     digest = fingerprint(project, resolved["inputs"])
-    public = next((r for r in releases if not r["draft"] and not r["prerelease"]), None)
-    previous = None
-    if public:
-        asset = next(
-            (a for a in public["assets"] if a["name"] == "NimbusMatch-BUILD-INFO.json"),
+    commit = git(project, "rev-parse", "HEAD")
+    selected = []
+    for family_id in FAMILIES if family == "all" else [family]:
+        config = load_family(project, family_id)
+        current = source_hashes(project, config, resolved["inputs"])
+        previous = latest_manifest(releases, config)
+        changed = previous is None or current != {
+            style: report["source_sha256"]
+            for style, report in previous["styles"].items()
+        }
+        if not changed and not force:
+            continue
+        # Existing combined manifests seed each family's independent counter.
+        versions = [previous["version"]] if previous else []
+        pattern = re.compile(rf"{re.escape(family_id)}-v(\d+\.\d{{3}})")
+        versions.extend(
+            m[1] for r in releases if (m := pattern.fullmatch(r["tag_name"]))
+        )
+        number = max((int(v.replace(".", "")) for v in versions), default=1000) + 1
+        version = f"{number // 1000}.{number % 1000:03d}"
+        marker = f"Build identity: {family_id} / {commit} / {digest}"
+        draft = next(
+            (
+                r
+                for r in releases
+                if r["draft"]
+                and marker in (r["body"] or "")
+                and pattern.fullmatch(r["tag_name"])
+            ),
             None,
         )
-        if asset:
-            previous = fetch_json(asset["browser_download_url"]).get(
-                "build_fingerprint"
-            )
-    versions = [
-        int(m[1])
-        for r in releases
-        if (m := re.fullmatch(r"v1\.(\d{3})", r["tag_name"]))
-    ]
-    version = f"1.{max(versions, default=0) + 1:03d}"
-    commit = git(project, "rev-parse", "HEAD")
-    marker = f"Build identity: {commit} / {digest}"
-    matching_draft = next(
-        (
-            r
-            for r in releases
-            if r["draft"]
-            and marker in (r["body"] or "")
-            and re.fullmatch(r"v1\.\d{3}", r["tag_name"])
-        ),
-        None,
-    )
-    if matching_draft:
-        version = matching_draft["tag_name"][1:]
-    should_build = force or family != "all" or previous != digest
-    result = {
-        **resolved,
-        "version": version,
-        "commit": commit,
-        "build_fingerprint": digest,
-        "publish": family == "all",
-    }
-    path = project / "build_temp/inputs.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(result, indent=2) + "\n")
+        if draft:
+            version = pattern.fullmatch(draft["tag_name"])[1]
+        result = {
+            **resolved,
+            "family": family_id,
+            "version": version,
+            "tag": f"{family_id}-v{version}",
+            "commit": commit,
+            "build_fingerprint": digest,
+            "source_hashes": current,
+            "publish": changed,
+        }
+        path = project / "build_temp" / f"{family_id}-inputs.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        selected.append(family_id)
     values = {
-        "should_build": str(should_build).lower(),
-        "version": version,
-        "families": json.dumps(list(FAMILIES) if family == "all" else [family]),
-        "publish": str(family == "all").lower(),
+        "should_build": str(bool(selected)).lower(),
+        "families": json.dumps(selected),
     }
     if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
             f.writelines(f"{k}={v}\n" for k, v in values.items())
     print(json.dumps(values))
 
 
-def publish(project):
+def publish(project, family_id):
     repo = os.environ.get("GITHUB_REPOSITORY", "IvanaGyro/nimbus-match")
-    inputs = json.loads((project / "build_temp/inputs.json").read_text())
+    inputs = json.loads(
+        (project / "build_temp" / f"{family_id}-inputs.json").read_text()
+    )
+    if inputs["family"] != family_id:
+        raise ValueError("Prepared family differs from requested family")
     if not inputs.get("publish"):
-        raise ValueError("A public release requires both families")
+        print("Source unchanged; development artifacts only.")
+        return
     if git(project, "rev-parse", "HEAD") != inputs["commit"]:
         raise ValueError("Checkout differs from tested release commit")
     if fingerprint(project, inputs["inputs"]) != inputs["build_fingerprint"]:
         raise ValueError("Build code/configuration changed after preparation")
     assets = []
-    for family_id in FAMILIES:
-        family = load_family(project, family_id)
-        assets.extend(validate(family, project / "dist" / family_id))
-        info = json.loads(
-            (
-                project / "dist" / family_id / f"{family.prefix}-BUILD-INFO.json"
-            ).read_text()
-        )
-        for key in ("version", "commit", "build_fingerprint"):
-            if info[key] != inputs[key]:
-                raise ValueError(f"Mismatched {key} in {family_id}")
-    sums = project / "dist/SHA256SUMS"
+    family = load_family(project, family_id)
+    assets.extend(validate(family, project / "dist" / family_id))
+    info = json.loads(
+        (project / "dist" / family_id / f"{family.prefix}-BUILD-INFO.json").read_text()
+    )
+    for key in ("version", "commit", "build_fingerprint"):
+        if info[key] != inputs[key]:
+            raise ValueError(f"Mismatched {key} in {family_id}")
+    if {s: r["source_sha256"] for s, r in info["styles"].items()} != inputs[
+        "source_hashes"
+    ]:
+        raise ValueError("Built sources differ from prepared sources")
+    sums = project / "dist" / family_id / "SHA256SUMS"
     sums.write_text("".join(f"{sha256(p.read_bytes())}  {p.name}\n" for p in assets))
     assets.append(sums)
-    tag = "v" + inputs["version"]
-    releases = json.loads(gh(project, "api", f"repos/{repo}/releases?per_page=100"))
+    tag = inputs["tag"]
+    if tag != f"{family_id}-v{inputs['version']}":
+        raise ValueError("Invalid prepared family tag")
+    releases = list_releases(repo)
     existing = next((r for r in releases if r["tag_name"] == tag), None)
-    marker = f"Build identity: {inputs['commit']} / {inputs['build_fingerprint']}"
+    marker = f"Build identity: {family_id} / {inputs['commit']} / {inputs['build_fingerprint']}"
     if existing and (not existing["draft"] or marker not in (existing["body"] or "")):
         raise ValueError("Refusing to overwrite a published release or unrelated draft")
     if existing and existing["target_commitish"] != inputs["commit"]:
         raise ValueError("Matching draft targets a different commit")
     notes = project / "build_temp/release-notes.md"
     notes.write_text(
-        f"""Nimbus Match and Termes Match {inputs["version"]}
+        f"""{family.name} {inputs["version"]}
 
-Each family contains Regular, Bold, Italic and Bold Italic.
+This family contains Regular, Bold, Italic and Bold Italic.
 Install its ZIP's four OTFs OR its OTC; choose one format.
 Individual OTF/OTC downloads require the corresponding NOTICES asset.
 The BUILD-INFO assets record source identities, policies and coverage limits.
 Native feature-alternate metrics are not guaranteed to match Times New Roman.
 
-[Nimbus Match notices](https://github.com/{repo}/releases/download/{tag}/NimbusMatch-NOTICES.txt)
-[Termes Match notices](https://github.com/{repo}/releases/download/{tag}/TermesMatch-NOTICES.txt)
+[{family.name} notices](https://github.com/{repo}/releases/download/{tag}/{family.prefix}-NOTICES.txt)
 
 {marker}
 """,
@@ -166,7 +214,7 @@ Native feature-alternate metrics are not guaranteed to match Times New Roman.
             "--target",
             inputs["commit"],
             "--title",
-            f"Font Match {inputs['version']}",
+            f"{family.name} {inputs['version']}",
             "--notes-file",
             str(notes),
         )
@@ -183,9 +231,8 @@ Native feature-alternate metrics are not guaranteed to match Times New Roman.
         for path in assets:
             if (remote / path.name).read_bytes() != path.read_bytes():
                 raise ValueError(f"Remote checksum mismatch: {path.name}")
-        for family_id in FAMILIES:
-            validate(load_family(project, family_id), remote)
-    gh(project, "release", "edit", tag, "--draft=false", "--latest")
+        validate(family, remote)
+    gh(project, "release", "edit", tag, "--draft=false", "--latest=false")
     release = json.loads(gh(project, "release", "view", tag, "--json", "isDraft,url"))
     if release["isDraft"]:
         raise ValueError("Release is still a draft")
@@ -203,8 +250,7 @@ Native feature-alternate metrics are not guaranteed to match Times New Roman.
             if sha256(content) != sha256(path.read_bytes()):
                 raise ValueError(f"Public download checksum mismatch: {path.name}")
             (remote / path.name).write_bytes(content)
-        for family_id in FAMILIES:
-            validate(load_family(project, family_id), remote)
+        validate(family, remote)
     print(release["url"])
 
 
@@ -217,7 +263,9 @@ def main():
     if args.command == "prepare":
         prepare(Path.cwd(), args.force, args.family)
     else:
-        publish(Path.cwd())
+        if args.family == "all":
+            parser.error("publish requires a single --family")
+        publish(Path.cwd(), args.family)
 
 
 if __name__ == "__main__":
