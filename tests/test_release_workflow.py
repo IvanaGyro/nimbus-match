@@ -95,3 +95,19 @@ def test_family_only_run_cannot_publish(tmp_path):
     path.write_text('{"publish":false}')
     with pytest.raises(ValueError, match="both families"):
         release.publish(tmp_path)
+
+
+def test_github_json_preserves_utf8_on_legacy_windows_locale(tmp_path, monkeypatch):
+    payload = json.dumps(
+        {"sha": "commit", "message": "Release č"}, ensure_ascii=False
+    ).encode("utf-8")
+
+    def windows_output(command, **options):
+        # Model the real failure: gh emits UTF-8 while Windows defaults to cp1252.
+        return payload.decode(options.get("encoding", "cp1252"))
+
+    monkeypatch.setattr(release.subprocess, "check_output", windows_output)
+    result = json.loads(
+        release.gh(tmp_path, "api", "repos/example/fonts/commits/v1.001")
+    )
+    assert result == {"sha": "commit", "message": "Release č"}

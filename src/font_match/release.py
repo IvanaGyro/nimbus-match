@@ -15,7 +15,9 @@ from .upstream import fetch_json, resolve_inputs, sha256
 
 
 def git(project, *args):
-    return subprocess.check_output(["git", *args], cwd=project, text=True).strip()
+    return subprocess.check_output(
+        ["git", *args], cwd=project, text=True, encoding="utf-8"
+    ).strip()
 
 
 def fingerprint(project, inputs):
@@ -40,7 +42,9 @@ def fingerprint(project, inputs):
 
 
 def gh(project, *args):
-    return subprocess.check_output(["gh", *args], cwd=project, text=True).strip()
+    return subprocess.check_output(
+        ["gh", *args], cwd=project, text=True, encoding="utf-8"
+    ).strip()
 
 
 def prepare(project, force=False, family="all"):
