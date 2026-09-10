@@ -21,3 +21,4 @@ build/
 !families/*/previews/*.png
 .run_verify.py
 .run_stage.py
+.run_index.py

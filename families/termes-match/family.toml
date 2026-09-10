@@ -1,0 +1,15 @@
+id = "termes-match"
+name = "Termes Match"
+prefix = "TermesMatch"
+provider = "termes"
+remove_liga = true
+legacy_kerning_names = false
+predict_missing = true
+notices = ["licenses/NOTICES.txt"]
+
+[sources]
+Regular = "texgyretermes-regular.otf"
+Bold = "texgyretermes-bold.otf"
+Italic = "texgyretermes-italic.otf"
+BoldItalic = "texgyretermes-bolditalic.otf"
+

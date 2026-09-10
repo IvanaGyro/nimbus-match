@@ -1,0 +1,16 @@
+id = "nimbus-match"
+name = "Nimbus Match"
+prefix = "NimbusMatch"
+provider = "nimbus"
+remove_liga = true
+legacy_kerning_names = true
+predict_missing = false
+notices = ["licenses/NOTICES.txt"]
+
+[sources]
+Regular = "NimbusRoman-Regular.otf"
+Bold = "NimbusRoman-Bold.otf"
+Italic = "NimbusRoman-Italic.otf"
+BoldItalic = "NimbusRoman-BoldItalic.otf"
+
+
