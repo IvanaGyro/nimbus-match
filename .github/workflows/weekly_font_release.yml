@@ -1,93 +1,111 @@
-name: Weekly Nimbus Match Font Release
-
+name: Weekly Font Match Release
 on:
   schedule:
-    # Run every Sunday at 00:00 UTC
     - cron: '0 0 * * 0'
   workflow_dispatch:
     inputs:
       force_build:
-        description: 'Force build and create GitHub release even if tag already exists'
+        description: Build even when input identity is unchanged
         type: boolean
-        required: false
         default: false
-
+      family:
+        description: A single family produces development artifacts only
+        type: choice
+        options: [all, nimbus-match, termes-match]
+        default: all
+concurrency:
+  group: font-match-release
+  cancel-in-progress: false
+permissions:
+  contents: read
 jobs:
-  check-and-release:
+  prepare:
+    runs-on: windows-latest
+    outputs:
+      should_build: ${{ steps.prepare.outputs.should_build }}
+      version: ${{ steps.prepare.outputs.version }}
+      families: ${{ steps.prepare.outputs.families }}
+      publish: ${{ steps.prepare.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.3
+        with:
+          pixi-version: v0.73.0
+      - id: prepare
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SELECTED_FAMILY: ${{ inputs.family || 'all' }}
+          FORCE_BUILD: ${{ inputs.force_build }}
+        run: |
+          $arguments = @('prepare', '--family', $env:SELECTED_FAMILY)
+          if ($env:FORCE_BUILD -eq 'true') { $arguments += '--force' }
+          pixi run python -m font_match.release @arguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: steps.prepare.outputs.should_build == 'true'
+        with:
+          name: resolved-inputs
+          path: |
+            build_temp/inputs.json
+            build_temp/archives/*.zip
+          if-no-files-found: error
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.should_build == 'true'
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        family: ${{ fromJSON(needs.prepare.outputs.families) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.3
+        with:
+          pixi-version: v0.73.0
+      - uses: actions/download-artifact@v4
+        with:
+          name: resolved-inputs
+          path: build_temp
+      - run: pixi run font-match build --family ${{ matrix.family }} --version ${{ needs.prepare.outputs.version }}
+      - run: pixi run pytest --junitxml=build_temp/tests.xml
+        env:
+          FONT_MATCH_FAMILY: ${{ matrix.family }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: diagnostics-${{ matrix.family }}
+          path: build_temp/tests.xml
+          if-no-files-found: ignore
+      - run: pixi run font-match verify --family ${{ matrix.family }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fonts-${{ matrix.family }}
+          path: dist/${{ matrix.family }}/
+          if-no-files-found: error
+  publish:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.publish == 'true'
     runs-on: windows-latest
     permissions:
       contents: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Pixi Environment
-        uses: prefix-dev/setup-pixi@v0.8.3
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.3
         with:
           pixi-version: v0.73.0
-          cache: true
-
-      - name: Check Upstream Releases and Build Fonts
-        id: build
-        shell: powershell
-        run: |
-          $forceFlag = ""
-          if ("${{ inputs.force_build }}" -eq "true") {
-              $forceFlag = "--force"
-          }
-          pixi run python check_and_build.py $forceFlag
-
-      - name: Run Pytest Compatibility Suite
-        id: test
-        if: steps.build.outputs.should_release == 'true'
-        shell: powershell
-        run: |
-          pixi run pytest
-
-      - name: Upload Comparison Image Artifact
-        if: steps.build.outputs.should_release == 'true' && steps.test.outcome == 'success'
-        uses: actions/upload-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: nimbus-match-comparison-image
-          path: dist/nimbus_match_comparison.png
-          if-no-files-found: warn
-
-      - name: Create GitHub Release
-        if: steps.build.outputs.should_release == 'true' && steps.test.outcome == 'success'
-        uses: softprops/action-gh-release@v2
+          name: resolved-inputs
+          path: build_temp
+      - uses: actions/download-artifact@v4
         with:
-          tag_name: ${{ steps.build.outputs.release_tag }}
-          name: ${{ steps.build.outputs.release_title }}
-          body: |
-            ## Nimbus Match Font Release
-
-            **Nimbus Match** is a free Times New Roman metric-compatible font family combining the visual letterforms of **Nimbus Roman** with the exact layout metrics and kerning of **Tinos / Times New Roman**.
-
-            > [!TIP]
-            > Download **`NimbusMatch.otc`** (OpenType Collection) to install all 4 font variants in 1 click!
-
-            ### Release Details
-            - **Upstream Tinos Version**: `${{ steps.build.outputs.tinos_version }}`
-            - **Upstream URW Base35 (Nimbus Roman) Version**: `${{ steps.build.outputs.nimbus_version }}`
-            - **Included Styles**: Regular, Bold, Italic, Bold Italic
-            - **Supported Scripts**: Latin, Greek, Cyrillic, Punctuation & Symbols
-
-            ### Release Assets
-            - `NimbusMatch.otc` (1-Click OpenType Collection bundling all 4 styles for Windows, macOS, Linux)
-            - `NimbusMatch.zip` (Bundle containing all 4 font OTF files)
-            - `NimbusMatch-Regular.otf`
-            - `NimbusMatch-Bold.otf`
-            - `NimbusMatch-Italic.otf`
-            - `NimbusMatch-BoldItalic.otf`
-            - `nimbus_match_comparison.png` (Side-by-side & overlay visual comparison)
-          files: |
-            dist/NimbusMatch.otc
-            dist/NimbusMatch.zip
-            dist/NimbusMatch-Regular.otf
-            dist/NimbusMatch-Bold.otf
-            dist/NimbusMatch-Italic.otf
-            dist/NimbusMatch-BoldItalic.otf
-            dist/nimbus_match_comparison.png
+          name: fonts-nimbus-match
+          path: dist/nimbus-match
+      - uses: actions/download-artifact@v4
+        with:
+          name: fonts-termes-match
+          path: dist/termes-match
+      - run: pixi run python -m font_match.release publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
