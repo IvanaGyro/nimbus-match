@@ -1,0 +1,172 @@
+{
+  "family": "Termes Match",
+  "reference_version": "Version 7.12",
+  "missing_features": [
+    "calt",
+    "ccmp",
+    "dnom",
+    "fina",
+    "init",
+    "isol",
+    "liga",
+    "mark",
+    "medi",
+    "mkmk",
+    "numr",
+    "rclt",
+    "rlig"
+  ],
+  "metric_order": [
+    "TNR",
+    "Tinos",
+    "Termes Match"
+  ],
+  "metrics": {
+    "yStrikeoutPosition": [
+      530,
+      420,
+      420
+    ],
+    "yStrikeoutSize": [
+      102,
+      100,
+      100
+    ],
+    "ySubscriptXSize": [
+      1434,
+      1331,
+      1331
+    ],
+    "ySubscriptYSize": [
+      1331,
+      1229,
+      1229
+    ],
+    "ySubscriptYOffset": [
+      293,
+      154,
+      154
+    ],
+    "ySuperscriptXSize": [
+      1434,
+      1331,
+      1331
+    ],
+    "ySuperscriptYSize": [
+      1331,
+      1229,
+      1229
+    ],
+    "ySuperscriptYOffset": [
+      928,
+      717,
+      717
+    ]
+  },
+  "advance_differences": [
+    {
+      "codepoint": "U+2031",
+      "widths": [
+        2713,
+        2724,
+        2724
+      ]
+    },
+    {
+      "codepoint": "U+203B",
+      "widths": [
+        2048,
+        1155,
+        1155
+      ]
+    },
+    {
+      "codepoint": "U+203F",
+      "widths": [
+        1959,
+        1347,
+        1347
+      ]
+    },
+    {
+      "codepoint": "U+2040",
+      "widths": [
+        1959,
+        1347,
+        1347
+      ]
+    },
+    {
+      "codepoint": "U+2052",
+      "widths": [
+        1024,
+        709,
+        709
+      ]
+    },
+    {
+      "codepoint": "U+2054",
+      "widths": [
+        1959,
+        1347,
+        1347
+      ]
+    },
+    {
+      "codepoint": "U+2103",
+      "widths": [
+        2097,
+        2076,
+        2076
+      ]
+    },
+    {
+      "codepoint": "U+2117",
+      "widths": [
+        1509,
+        1556,
+        1556
+      ]
+    },
+    {
+      "codepoint": "U+2118",
+      "widths": [
+        1516,
+        1651,
+        1651
+      ]
+    },
+    {
+      "codepoint": "U+211E",
+      "widths": [
+        1366,
+        1565,
+        1565
+      ]
+    },
+    {
+      "codepoint": "U+2120",
+      "widths": [
+        1857,
+        2007,
+        2007
+      ]
+    },
+    {
+      "codepoint": "U+FB03",
+      "widths": [
+        1735,
+        1692,
+        1692
+      ]
+    },
+    {
+      "codepoint": "U+FB04",
+      "widths": [
+        1704,
+        1694,
+        1694
+      ]
+    }
+  ]
+}

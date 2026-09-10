@@ -109,6 +109,11 @@ def main(argv=None):
     build.add_argument("--out-dir", type=Path)
     verify = commands.add_parser("verify")
     verify.add_argument("--family", choices=(*FAMILIES, "all"), required=True)
+    preview = commands.add_parser("preview")
+    preview.add_argument("--family", choices=FAMILIES, required=True)
+    preview.add_argument("--reference", type=Path, required=True)
+    preview.add_argument("--tinos", type=Path, required=True)
+    preview.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
     project = args.project_dir.resolve()
     if args.command == "resolve":
@@ -142,4 +147,14 @@ def main(argv=None):
         (project / "dist" / "SHA256SUMS").write_text(
             "".join(f"{sha256(p.read_bytes())}  {p.name}\n" for p in assets),
             encoding="utf-8",
+        )
+    else:
+        from .previews.differences import generate
+
+        family = load_family(project, args.family)
+        generate(
+            project / "dist" / family.id / f"{family.prefix}-Regular.otf",
+            project / args.reference,
+            project / args.tinos,
+            project / args.out,
         )

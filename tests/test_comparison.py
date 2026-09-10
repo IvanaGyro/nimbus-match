@@ -59,3 +59,31 @@ def test_overlay_keeps_shared_ink_light_and_exclusive_ink_saturated():
         (255, 255, 255),
     ]
     assert min(result.getpixel((0, 0))) >= 180
+
+
+@pytest.mark.parametrize(
+    "reference_family,style,message",
+    [
+        ("Tinos", "Regular", "actual local Times New Roman"),
+        ("Times New Roman", "Bold", "requires Regular fonts"),
+    ],
+)
+def test_family_difference_command_rejects_mislabelled_references(
+    monkeypatch, tmp_path, reference_family, style, message
+):
+    from pathlib import Path
+    from font_match.previews import differences
+
+    reference = make_font(reference_family)
+    reference["name"].setName(style, 2, 3, 1, 0x409)
+    fonts = {
+        "match": make_font("Termes Match"),
+        "reference": reference,
+        "tinos": make_font("Tinos"),
+    }
+    monkeypatch.setattr(differences, "TTFont", lambda path: fonts[str(path)])
+    with pytest.raises(ValueError, match=message):
+        differences.generate(
+            Path("match"), Path("reference"), Path("tinos"), tmp_path / "comparison.png"
+        )
+    assert not (tmp_path / "comparison.png").exists()
