@@ -42,18 +42,11 @@ def get_latest_upstream_versions() -> tuple[str, str]:
         raise RuntimeError("No releases found for URW Base35 fonts")
     nimbus_tag = nimbus_data[0]["tag_name"]
 
-    try:
-        tinos_data = fetch_json(f"https://api.github.com/repos/{TINOS_REPO}/releases")
-        if tinos_data:
-            tinos_tag = tinos_data[0]["tag_name"]
-        else:
-            commit_data = fetch_json(
-                f"https://api.github.com/repos/{TINOS_REPO}/commits?per_page=1"
-            )
-            tinos_tag = commit_data[0]["sha"][:7] if commit_data else "main"
-    except Exception as e:
-        print(f"Warning: could not fetch Tinos release info ({e}), defaulting to main")
-        tinos_tag = "main"
+    tinos_data = fetch_json(f"https://api.github.com/repos/{TINOS_REPO}/releases")
+    ref = tinos_data[0]["tag_name"] if tinos_data else "main"
+    tinos_tag = fetch_json(f"https://api.github.com/repos/{TINOS_REPO}/commits/{ref}")[
+        "sha"
+    ]
 
     return nimbus_tag, tinos_tag
 
@@ -74,8 +67,10 @@ def check_tag_exists_in_current_repo(tag_name: str) -> bool:
             req.add_header("Authorization", f"token {token}")
         with urllib.request.urlopen(req):
             return True
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError):
-        return False
+    except urllib.error.HTTPError as error:
+        if error.code == 404:
+            return False
+        raise
 
 
 def download_bytes(url: str) -> bytes:
@@ -127,7 +122,7 @@ def extract_tinos_fonts(tinos_ver: str, target_dir: Path) -> dict[str, Path]:
         "Tinos-BoldItalic.ttf": "BoldItalic",
     }
 
-    base_raw = f"https://raw.githubusercontent.com/{TINOS_REPO}/main/fonts/ttf/"
+    base_raw = f"https://raw.githubusercontent.com/{TINOS_REPO}/{tinos_ver}/fonts/ttf/"
     for filename, style_key in mapping.items():
         url = f"{base_raw}{filename}"
         content = download_bytes(url)
