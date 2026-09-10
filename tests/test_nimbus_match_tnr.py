@@ -1,10 +1,16 @@
+import os
 from pathlib import Path
 
 import pytest
 from fontTools.ttLib import TTFont
 from PIL import Image, ImageDraw, ImageFont
 
-DIST_DIR = Path("dist")
+pytestmark = pytest.mark.skipif(
+    os.environ.get("FONT_MATCH_TNR_TESTS") != "1",
+    reason="Optional local TNR validation; set FONT_MATCH_TNR_TESTS=1",
+)
+
+DIST_DIR = Path("dist/nimbus-match")
 WIN_FONTS = Path(r"C:\Windows\Fonts")
 
 STYLES = [
@@ -32,34 +38,9 @@ STYLES = [
 
 
 def get_ref_font_path(candidates: list[str]) -> Path:
-    """Find system Times New Roman or fallback reference font."""
-    search_dirs = [
-        WIN_FONTS,
-        Path("/System/Library/Fonts/Supplemental"),
-        Path("/System/Library/Fonts"),
-        Path("/Library/Fonts"),
-        Path("dist"),
-        Path("scratch_fonts"),
-        Path("build_temp"),
-    ]
-    for sdir in search_dirs:
-        if not sdir.exists():
-            continue
-        for cand in candidates:
-            if (sdir / cand).exists():
-                return sdir / cand
-            if "times.ttf" in cand and (sdir / "Times New Roman.ttf").exists():
-                return sdir / "Times New Roman.ttf"
-            if "timesbd.ttf" in cand and (sdir / "Times New Roman Bold.ttf").exists():
-                return sdir / "Times New Roman Bold.ttf"
-            if "timesi.ttf" in cand and (sdir / "Times New Roman Italic.ttf").exists():
-                return sdir / "Times New Roman Italic.ttf"
-            if (
-                "timesbi.ttf" in cand
-                and (sdir / "Times New Roman Bold Italic.ttf").exists()
-            ):
-                return sdir / "Times New Roman Bold Italic.ttf"
-    pytest.skip(f"Reference font candidates {candidates} not found")
+    from font_match.previews.comparison import find_ref_font_path
+
+    return find_ref_font_path(candidates, DIST_DIR, require_times_new_roman=True)[0]
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -68,11 +49,7 @@ def ensure_fonts_built():
     missing = [
         filename for _, filename, _ in STYLES if not (DIST_DIR / filename).exists()
     ]
-    if missing:
-        from check_and_build import main as build_main
-
-        print(f"Building missing test fonts: {missing}")
-        build_main()
+    assert not missing, f"Build Nimbus Match first; missing {missing}"
 
 
 @pytest.mark.parametrize("style_name, font_file, ref_candidates", STYLES)

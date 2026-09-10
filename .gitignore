@@ -11,3 +11,13 @@ __pycache__/
 scratch/
 .tmp_script.py
 .run_temp.py
+
+*.otc
+*.egg-info/
+build/
+.pytest_cache/
+.ruff_cache/
+.run_edit.py
+!families/*/previews/*.png
+.run_verify.py
+.run_stage.py

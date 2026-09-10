@@ -19,8 +19,7 @@ from pathlib import Path
 
 from fontTools.ttLib import TTCollection, TTFont
 
-from build_nimbus_match import build_single_style
-from generate_comparison import generate_comparison_image
+from font_match.build import build_single_style
 
 NIMBUS_REPO = "ArtifexSoftware/urw-base35-fonts"
 TINOS_REPO = "googlefonts/tinos"
@@ -226,26 +225,6 @@ def main() -> None:
     for f in ttc.fonts:
         f.close()
     print(f" Successfully created {otc_path.name} ({otc_path.stat().st_size} bytes)")
-
-    print("\n5. Generating visual comparison image...")
-    ref_filenames = [
-        "Tinos-Regular.ttf",
-        "Tinos-Bold.ttf",
-        "Tinos-Italic.ttf",
-        "Tinos-BoldItalic.ttf",
-    ]
-    for filename in ref_filenames:
-        if (work_dir / filename).exists():
-            (out_dir / filename).write_bytes((work_dir / filename).read_bytes())
-
-    comparison_img = out_dir / "nimbus_match_comparison.png"
-    try:
-        generate_comparison_image(out_dir, comparison_img)
-    finally:
-        for filename in ref_filenames:
-            ref_file = out_dir / filename
-            if ref_file.exists():
-                ref_file.unlink()
 
     print("\n5. Packaging all font variants into NimbusMatch.zip...")
     zip_path = out_dir / "NimbusMatch.zip"

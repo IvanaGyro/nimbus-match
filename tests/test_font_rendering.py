@@ -3,8 +3,8 @@ from fontTools.feaLib.builder import addOpenTypeFeaturesFromString
 from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 
-from generate_font_details import smallcaps_masks
-from render_font_sample import FontRenderer, finish_mask, new_mask
+from font_match.previews.details import smallcaps_masks
+from font_match.previews.render import FontRenderer, finish_mask, new_mask
 
 
 @pytest.fixture

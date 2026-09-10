@@ -2,8 +2,14 @@ import pytest
 from fontTools.fontBuilder import FontBuilder
 from PIL import Image, ImageFont
 
-from generate_comparison import BLUE, OVERLAP, RED, composite_overlay, wrap_sample
-from generate_font_details import glyph_advance, validate_font_pair
+from font_match.previews.comparison import (
+    BLUE,
+    OVERLAP,
+    RED,
+    composite_overlay,
+    wrap_sample,
+)
+from font_match.previews.details import glyph_advance, validate_font_pair
 
 
 def make_font(family):
