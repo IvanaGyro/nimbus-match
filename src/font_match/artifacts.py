@@ -1,35 +1,26 @@
 """Per-family release packaging with strict content validation."""
 
 import io
-import json
-import platform
 import zipfile
-from importlib.metadata import version
+import re
 
 from fontTools.ttLib import TTCollection, TTFont
 
 from .config import STYLES
-from .upstream import sha256
 
 
 def asset_names(family):
     return [f"{family.prefix}-{s}.otf" for s in STYLES] + [
         f"{family.prefix}.otc",
         f"{family.prefix}.zip",
-        f"{family.prefix}-BUILD-INFO.json",
         f"{family.prefix}-LICENSE.txt",
     ]
 
 
-def package(family, output, manifest):
+def package(family, output):
     fonts = [output / f"{family.prefix}-{s}.otf" for s in STYLES]
-    manifest["font_sha256"] = {p.name: sha256(p.read_bytes()) for p in fonts}
-    manifest["tools"] = {
-        "python": platform.python_version(),
-        "fonttools": version("fonttools"),
-    }
-    info = output / f"{family.prefix}-BUILD-INFO.json"
-    info.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    # Remove the retired sidecar when rebuilding in an existing output directory.
+    (output / f"{family.prefix}-BUILD-INFO.json").unlink(missing_ok=True)
     notice = output / f"{family.prefix}-LICENSE.txt"
     notice.write_text(
         "\n\n".join(p.read_text(encoding="utf-8") for p in family.notices),
@@ -42,32 +33,37 @@ def package(family, output, manifest):
     with zipfile.ZipFile(
         output / f"{family.prefix}.zip", "w", zipfile.ZIP_DEFLATED
     ) as archive:
-        for path in [*fonts, info, notice]:
+        for path in [*fonts, notice]:
             # Fixed ZIP metadata makes repeated packages reproducible.
             entry = zipfile.ZipInfo(path.name, (2000, 1, 1, 0, 0, 0))
             entry.compress_type = zipfile.ZIP_DEFLATED
             archive.writestr(entry, path.read_bytes())
         archive.writestr(
             zipfile.ZipInfo("INSTALL.txt", (2000, 1, 1, 0, 0, 0)),
-            f"Install the four {family.name} OTF files, or the separately supplied OTC.\nChoose one format to avoid duplicate installation.\nSee the included LICENSE and BUILD-INFO files.\n",
+            f"Install the four {family.name} OTF files, or the separately supplied OTC.\nChoose one format to avoid duplicate installation.\nSee the included LICENSE file.\n",
         )
     validate(family, output)
 
 
-def validate(family, output):
+def validate(family, output, expected_version=None, expected_revision=None):
     for name in asset_names(family):
         if not (output / name).is_file():
             raise ValueError(f"Missing required release artifact: {output / name}")
-    info = json.loads((output / f"{family.prefix}-BUILD-INFO.json").read_text())
+    with TTFont(output / f"{family.prefix}-Regular.otf") as regular:
+        label = regular["name"].getDebugName(5)
+    match = re.fullmatch(r"Version (\d+\.\d{3})(?:; (.+))?", label or "")
+    if not match:
+        raise ValueError("Invalid embedded font version")
+    revision, version = match[1], match[2] or match[1]
+    if expected_version is not None and version != expected_version:
+        raise ValueError("Font version differs from prepared release")
+    if expected_revision is not None and revision != expected_revision:
+        raise ValueError("Font revision differs from prepared release")
     expected = {f"{family.prefix}-{s}.otf" for s in STYLES}
 
     def check(font, style):
         assert font["name"].getBestFamilyName() == family.name
         assert font["name"].getDebugName(6) == f"{family.prefix}-{style}"
-        revision = info.get("font_revision", info["version"])
-        label = f"Version {revision}"
-        if info["version"] != revision:
-            label += f"; {info['version']}"
         assert font["name"].getDebugName(5) == label
         assert abs(font["head"].fontRevision - float(revision)) < 1 / 65536
         assert font["CFF "].cff.topDictIndex[0].version == revision
@@ -76,17 +72,14 @@ def validate(family, output):
 
     for style in STYLES:
         name = f"{family.prefix}-{style}.otf"
-        assert sha256((output / name).read_bytes()) == info["font_sha256"][name]
         with TTFont(output / name) as font:
             check(font, style)
     with zipfile.ZipFile(output / f"{family.prefix}.zip") as archive:
         assert set(archive.namelist()) == expected | {
             "INSTALL.txt",
-            f"{family.prefix}-BUILD-INFO.json",
             f"{family.prefix}-LICENSE.txt",
         }
         for name in expected | {
-            f"{family.prefix}-BUILD-INFO.json",
             f"{family.prefix}-LICENSE.txt",
         }:
             assert archive.read(name) == (output / name).read_bytes()

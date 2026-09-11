@@ -14,7 +14,7 @@ Implemented on 2026-09-10; public release verified on 2026-09-11. The chosen sec
 - Installed `src/font_match/` package with a console entry point and `python -m font_match`. Pixi installs the local project as an editable dependency; ordinary wheels contain only package code and metadata.
 - Small typed family configurations in `families/<family>/family.toml`, including style mappings, names, source provider, feature/metric policies and relative notice paths.
 - An explicit `--project-dir` resolves repository data independently of the installed package location. Root scripts remain compatibility entry points.
-- `font-match resolve` records exact input URLs, full Git revisions and archive SHA-256 hashes. Downloads and extraction reject changed or unavailable pinned inputs. A release BUILD-INFO manifest can be reused with `build --inputs`.
+- `font-match resolve` records exact input URLs, full Git revisions and archive SHA-256 hashes. Downloads and extraction reject changed or unavailable pinned inputs. Saved resolved inputs can be reused with `build --inputs`.
 - `font-match build --family all|nimbus-match|termes-match` builds four styles per family in separate output directories. The public build path never imports preview commands.
 - `font-match verify --family all` reopens loose fonts, ZIPs and OTCs and writes the combined asset checksums.
 - Optional `font-match preview` requires explicit TNR and Tinos paths and generates 640-pixel comparison images plus measured JSON reports.
@@ -27,19 +27,19 @@ Do not commit source hashes, glyph counts, generated previews or measured metric
 
 ## Release contract (corrected 2026-09-11)
 
-Each family releases independently when its own upstream source font files change, or when Tinos or shared build code changes. Shared changes trigger both families. Compare the SHA-256 hashes of all four Nimbus Roman or TeX Gyre Termes OTFs with that family's latest public BUILD-INFO style records. Compare Tinos input identity and a separate code fingerprint against each family’s own last manifest. The code fingerprint covers package code, family configurations/notices, dependency configuration/lockfile and release workflow, but excludes outline inputs and documentation. Preserve the full build fingerprint for publication verification. Legacy manifests without the separate code fingerprint trigger one release per family to establish this baseline. Unrelated files in upstream archives do not trigger a release.
+Each family releases when its own upstream version changes, or when Tinos or shared code changes. Compare upstream versions from each family's latest published tag. Compare Git changes since that family tag for package code, configurations, licenses, dependency metadata and the workflow. Documentation and archive-only changes do not trigger releases. CI checks out full Git history for these comparisons.
 
 Tags follow Tinos version, outline-source version, increment: `tinos-<version>-nimbus-<version>-<increment>` and `tinos-<version>-termes-<version>-<increment>`. Tinos and Termes versions are read from all four upstream fonts and must agree within each family; Nimbus uses its upstream release identifier. The increment advances within a family/version pair and resets to 1 for a new pair. Existing tags remain untouched. Matching drafts reuse their increment.
 
-BUILD-INFO `version` holds the readable three-part version; `font_revision` holds a separately increasing numeric OpenType revision. Name ID 5 includes both, while head.fontRevision and CFF version retain valid numeric values. The numeric revision continues from the last family manifest, including older manifests that used a numeric `version`. Search paginated public release history separately for each family's manifest, ignoring drafts and prereleases.
+Name ID 5 holds the readable three-part version alongside a numeric OpenType revision. The numeric revision advances from the previous release's version note. Release detection uses tags and Git history without a downloadable build manifest.
 
 Each family release publishes:
 
 - Four individually named OTF styles.
 - An OTC containing exactly those four styles.
-- A ZIP containing the four OTFs, INSTALL.txt, notices and BUILD-INFO.
-- Separate `*-LICENSE.txt` and `*-BUILD-INFO.json` assets.
-- SHA256SUMS covering those eight family assets.
+- A ZIP containing the four OTFs, INSTALL.txt and the font license.
+- A separate `*-LICENSE.txt` asset.
+- SHA256SUMS covering those seven family assets.
 
 Resolve inputs once, select changed families, and build them in read-only matrix jobs. Separate write-scoped publisher jobs validate and upload only their selected family's assets. Reuse only matching family drafts; reject public-release overwrites and unrelated drafts. Validate downloaded draft packages and verify public downloads, checksums and tag targets after publication. Workflow concurrency serializes release runs.
 
@@ -49,7 +49,7 @@ Manual runs can select one family or both. Forced builds of unchanged sources an
 
 Run formatting/lint and the required test suite before each logical commit. Required tests verify input integrity, Unicode metrics, glyph preservation, future-glyph prediction, naming, release detection/version allocation and serialized OTF/OTC/ZIP contents. Optional tests may read explicitly enabled local TNR; builds never do.
 
-Verify ordinary wheel installation outside the checkout and independent family builds. Validate uploaded draft assets and public downloads against checksums and manifests. Keep font-dependent evidence in ignored local output or CI artifacts, not in repository snapshots.
+Verify ordinary wheel installation outside the checkout and independent family builds. Validate uploaded draft assets and public downloads against checksums and embedded versions. Keep font-dependent evidence in ignored local output or CI artifacts, not in repository snapshots.
 
 ## Commit boundaries
 

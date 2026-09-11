@@ -4,7 +4,7 @@ A Times New Roman metric-compatible font family built from Nimbus Roman outlines
 
 ## Build policy
 
-Builds use only the selected outline source and Tinos. All source glyphs are preserved, including future additions and unencoded alternates. Shared-character advances are matched by Unicode identity. Exact coverage, source versions and available features are recorded in each release's BUILD-INFO, rather than committed as snapshots.
+Builds use only the selected outline source and Tinos. All source glyphs are preserved, including future additions and unencoded alternates. Shared-character advances are matched by Unicode identity. Release tags and embedded font versions identify the upstream version pair. Coverage and feature reports can be generated locally, rather than committed as snapshots.
 
 Additional glyphs keep their scaled source widths except for explicit Unicode metric policy. Automatic ligatures are disabled to preserve ordinary text layout. Nimbus retains its established kerning-alias behavior.
 

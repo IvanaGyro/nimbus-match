@@ -4,7 +4,7 @@ A Times New Roman metric-compatible font family built from TeX Gyre Termes outli
 
 ## Build policy
 
-Builds use only the selected outline source and Tinos. All source glyphs are preserved, including future additions and unencoded alternates. Shared-character advances are matched by Unicode identity. Exact coverage, source versions and available features are recorded in each release's BUILD-INFO, rather than committed as snapshots.
+Builds use only the selected outline source and Tinos. All source glyphs are preserved, including future additions and unencoded alternates. Shared-character advances are matched by Unicode identity. Release tags and embedded font versions identify the upstream version pair. Coverage and feature reports can be generated locally, rather than committed as snapshots.
 
 For source-only canonically decomposable accented characters, widths are predicted from a Tinos base character. Explicit Unicode policy takes precedence; otherwise scaled source advances remain. Native source substitutions and non-kerning positioning are preserved, while kerning is replaced and automatic ligatures are disabled to preserve ordinary text layout. TeX Gyre Termes Math is not an input.
 

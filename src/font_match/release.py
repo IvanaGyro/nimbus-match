@@ -10,8 +10,8 @@ from pathlib import Path
 
 from .artifacts import validate
 from .cli import FAMILIES
-from .config import STYLES, load_family
-from .upstream import extract, fetch_json, resolve_inputs, sha256
+from .config import load_family
+from .upstream import fetch_json, resolve_inputs, sha256
 
 
 def git(project, *args):
@@ -60,30 +60,46 @@ def list_releases(repo):
         page += 1
 
 
-def source_hashes(project, family, inputs):
-    sources = extract(
-        project, inputs[family.provider], list(family.sources.values()), family.id
+def code_changed(project, tag):
+    return bool(
+        git(
+            project,
+            "diff",
+            "--name-only",
+            tag,
+            "--",
+            "src",
+            "pyproject.toml",
+            "pixi.lock",
+            "LICENSE",
+            ".github/workflows/weekly_font_release.yml",
+            ":(glob)families/**/family.toml",
+            ":(glob)families/**/LICENSE",
+        )
     )
-    return {
-        style: sha256(sources[name].read_bytes())
-        for style, name in family.sources.items()
-    }
 
 
-def latest_manifest(releases, family):
-    # GitHub may return its designated latest release ahead of newer family
-    # releases. Baselines follow publication time, not API list position.
-    for release in sorted(
+def latest_version(releases, family):
+    pattern = re.compile(rf"tinos-(.+)-{re.escape(family.provider)}-(.+)-(\d+)")
+    for item in sorted(
         releases, key=lambda r: r.get("published_at") or "", reverse=True
     ):
-        if release["draft"] or release["prerelease"]:
+        if item["draft"] or item["prerelease"]:
             continue
-        for asset in release["assets"]:
-            if asset["name"] == f"{family.prefix}-BUILD-INFO.json":
-                info = fetch_json(asset["browser_download_url"])
-                if info["family"] != family.id or set(info["styles"]) != set(STYLES):
-                    raise ValueError("Invalid published family manifest")
-                return info
+        match = pattern.fullmatch(item["tag_name"])
+        if not match:
+            continue
+        revision = re.search(
+            r"Numeric OpenType revision: \*\*(\d+\.\d{3})\*\*", item.get("body") or ""
+        )
+        if not revision:
+            raise ValueError("Published release has no numeric font revision")
+        return {
+            "tag": item["tag_name"],
+            "tinos": match[1],
+            "source": match[2],
+            "font_revision": revision[1],
+        }
     return None
 
 
@@ -95,29 +111,21 @@ def prepare(project, force=False, family="all"):
     shared.parent.mkdir(parents=True, exist_ok=True)
     shared.write_text(json.dumps(resolved, indent=2) + "\n", encoding="utf-8")
     digest = fingerprint(project, resolved["inputs"])
-    code_digest = fingerprint(project, {})
     commit = git(project, "rev-parse", "HEAD")
     selected = []
     for family_id in FAMILIES if family == "all" else [family]:
         config = load_family(project, family_id)
-        current = source_hashes(project, config, resolved["inputs"])
-        previous = latest_manifest(releases, config)
-        changed = previous is None or current != {
-            style: report["source_sha256"]
-            for style, report in previous["styles"].items()
-        }
-        # Compare shared dependencies against each family's own last release so a
-        # successful release of one family cannot consume the other's update.
-        if previous is not None:
-            changed |= previous.get("build_code_fingerprint") != code_digest or any(
-                previous["inputs"]["tinos"].get(key)
-                != resolved["inputs"]["tinos"].get(key)
-                for key in ("revision", "sha256")
-            )
-        if not changed and not force:
-            continue
+        previous = latest_version(releases, config)
         tinos_version = resolved["inputs"]["tinos"]["version"]
         source_version = resolved["inputs"][config.provider]["version"]
+        changed = (
+            previous is None
+            or previous["tinos"] != tinos_version
+            or previous["source"] != source_version
+            or code_changed(project, previous["tag"])
+        )
+        if not changed and not force:
+            continue
         for token in (tinos_version, source_version):
             if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", token):
                 raise ValueError(f"Unsafe upstream version: {token}")
@@ -128,9 +136,7 @@ def prepare(project, force=False, family="all"):
         ]
         increment = max(increments, default=0) + 1
         # Numeric OpenType revisions stay monotonic across upstream version pairs.
-        old_revision = (
-            previous.get("font_revision", previous["version"]) if previous else "1.000"
-        )
+        old_revision = previous["font_revision"] if previous else "1.000"
         number = int(old_revision.replace(".", "")) + 1
         font_revision = f"{number // 1000}.{number % 1000:03d}"
         marker = f"Build identity: {family_id} / {commit} / {digest}"
@@ -155,8 +161,6 @@ def prepare(project, force=False, family="all"):
             "font_revision": font_revision,
             "commit": commit,
             "build_fingerprint": digest,
-            "build_code_fingerprint": code_digest,
-            "source_hashes": current,
             "publish": changed,
         }
         path = project / "build_temp" / f"{family_id}-inputs.json"
@@ -187,25 +191,10 @@ def publish(project, family_id):
         raise ValueError("Checkout differs from tested release commit")
     if fingerprint(project, inputs["inputs"]) != inputs["build_fingerprint"]:
         raise ValueError("Build code/configuration changed after preparation")
-    assets = []
     family = load_family(project, family_id)
-    assets.extend(validate(family, project / "dist" / family_id))
-    info = json.loads(
-        (project / "dist" / family_id / f"{family.prefix}-BUILD-INFO.json").read_text()
+    assets = validate(
+        family, project / "dist" / family_id, inputs["version"], inputs["font_revision"]
     )
-    for key in (
-        "version",
-        "font_revision",
-        "commit",
-        "build_fingerprint",
-        "build_code_fingerprint",
-    ):
-        if info[key] != inputs[key]:
-            raise ValueError(f"Mismatched {key} in {family_id}")
-    if {s: r["source_sha256"] for s, r in info["styles"].items()} != inputs[
-        "source_hashes"
-    ]:
-        raise ValueError("Built sources differ from prepared sources")
     sums = project / "dist" / family_id / "SHA256SUMS"
     sums.write_text("".join(f"{sha256(p.read_bytes())}  {p.name}\n" for p in assets))
     assets.append(sums)
@@ -254,10 +243,9 @@ metric guarantee. Building these fonts does not read Times New Roman.
 
 Install the ZIP's four OTFs **or** the OTC; choose one format.
 Individual OTF/OTC downloads require the corresponding LICENSE asset.
-SHA256SUMS covers the eight family assets. BUILD-INFO records exact source
-URLs and hashes, build settings and coverage for reproducibility and release
-detection; it is not required for font installation and contains no bulk TNR
-comparison metrics.
+SHA256SUMS covers the seven family assets. Font files carry the readable
+release version and numeric OpenType revision; the tag records both upstream
+versions and the release increment.
 
 [{family.name} font license](https://github.com/{repo}/releases/download/{tag}/{family.prefix}-LICENSE.txt)
 

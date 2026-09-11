@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import subprocess
 from pathlib import Path
 
 from fontTools.ttLib import TTFont
@@ -25,7 +24,6 @@ def build_family(project, family_id, resolved, version, out_dir=None):
     references = extract(project, inputs["tinos"], reference_names, "references/tinos")
     output = (out_dir or project / "dist") / family.id
     output.mkdir(parents=True, exist_ok=True)
-    reports = {}
     for style in STYLES:
         source = sources[family.sources[style]]
         reference = references[f"Tinos-{style}.ttf"]
@@ -54,48 +52,7 @@ def build_family(project, family_id, resolved, version, out_dir=None):
                 built["hmtx"][built.getBestCmap()[cp]][0] == ref["hmtx"][rmap[cp]][0]
                 for cp in shared
             )
-            reports[style] = {
-                "source_sha256": sha256(source.read_bytes()),
-                "reference_sha256": sha256(reference.read_bytes()),
-                "encoded_count": len(cmap),
-                "shared_count": len(shared),
-                "source_only": [f"U+{cp:04X}" for cp in sorted(set(cmap) - set(rmap))],
-                "unencoded": sorted(set(original.getGlyphOrder()) - set(cmap.values())),
-                "features": {
-                    tag: sorted(
-                        {
-                            r.FeatureTag
-                            for r in built[tag].table.FeatureList.FeatureRecord
-                        }
-                    )
-                    for tag in ("GSUB", "GPOS")
-                    if tag in built
-                },
-            }
-    commit = subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=project, text=True
-    ).strip()
-    manifest = {
-        "schema": 1,
-        "family": family.id,
-        "version": version,
-        "font_revision": resolved.get("font_revision", version),
-        "commit": commit,
-        "inputs": inputs,
-        "styles": reports,
-        "policies": {
-            "remove_liga": family.remove_liga,
-            "unknown_advances": "canonical-base-prediction-then-scaled-source"
-            if family.predict_missing
-            else "scaled-source",
-            "reference": "Tinos",
-            "metric_overrides": "Unicode-keyed",
-            "non_kern_positioning": "preserved",
-        },
-    }
-    manifest["build_fingerprint"] = resolved.get("build_fingerprint")
-    manifest["build_code_fingerprint"] = resolved.get("build_code_fingerprint")
-    package(family, output, manifest)
+    package(family, output)
     return output
 
 
