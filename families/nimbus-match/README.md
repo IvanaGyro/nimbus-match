@@ -1,41 +1,35 @@
 # Nimbus Match
 
-Nimbus Roman outlines with Tinos advances and kerning, built at 2048 units per em. The four styles retain the existing Nimbus Match installation identity and ordinary-text behavior.
+A Times New Roman metric-compatible font family built from Nimbus Roman outlines and Tinos text metrics. It includes Regular, Bold, Italic and Bold Italic and can coexist with the other Match family.
 
-## Coverage and features
+## Build policy
 
-The audited source has 854 encoded characters per style: 732 shared with Tinos and 122 additional characters. The build preserves every source glyph, including unencoded alternates. Shared advances use Unicode identity. Additional glyphs retain scaled source widths except for explicit Unicode metric policy. Future input coverage is discovered on every build.
+Builds use only the selected outline source and Tinos. All source glyphs are preserved, including future additions and unencoded alternates. Shared-character advances are matched by Unicode identity. Exact coverage, source versions and available features are recorded in each release's BUILD-INFO, rather than committed as snapshots.
 
-Automatic `liga` substitutions are disabled to preserve reference text layout. Nimbus Match has no native `smcp` or `cpsp`. In LibreOffice, use **Font Effects → Case → Small capitals** for the 80% uppercase fallback, with the initial capital at full size. For TNR's native small caps, use `Times New Roman:smcp=1`. These are different application/font controls.
+Additional glyphs keep their scaled source widths except for explicit Unicode metric policy. Automatic ligatures are disabled to preserve ordinary text layout. Nimbus retains its established kerning-alias behavior.
 
-## Differences from Times New Roman
-
-Red is Times New Roman 7.12; blue is Nimbus Match Regular; gray is overlap. Captions compare TNR, Tinos and Match metrics in 2048-unit ems. Only shared supported characters are rendered. The feature list describes the whole fonts; some gaps concern scripts outside the shared coverage. The images illustrate font metrics with HarfBuzz and FreeType, not a guarantee of identical application effects.
-
-![Missing features and metric differences](previews/differences.png)
-
-[Full measured differences](previews/differences.json) include all shared-character advance differences, not only the largest examples shown above. Strikethrough position is 530 in TNR versus 420 in Tinos/Match; subscript drop is 293 versus 154; superscript rise is 928 versus 717.
+Shared text metrics do not guarantee identical native feature widths or rendering in every application.
 
 ## Build and install
+
+Resolve inputs as described in the [project README](../../README.md), then run:
 
 ```sh
 pixi run font-match build --family nimbus-match
 ```
 
-Resolve inputs first as described in the [project README](../../README.md). Install the four OTFs from `dist/nimbus-match/NimbusMatch.zip` or the separate `NimbusMatch.otc`.
+Install the four OTFs from the family's ZIP or its separate OTC, choosing one format. Download the corresponding LICENSE asset when using individual OTF/OTC files. Find published fonts and exact versions in the [release history](https://github.com/IvanaGyro/nimbus-match/releases).
 
-Regenerate differences with explicit local font paths:
+## Local comparisons
+
+Generate a current difference image and metric report with explicitly supplied local fonts:
 
 ```sh
-pixi run font-match preview --family nimbus-match --reference C:/Windows/Fonts/times.ttf --tinos path/to/Tinos-Regular.ttf --out families/nimbus-match/previews/differences.png
+pixi run font-match preview --family nimbus-match --reference C:/Windows/Fonts/times.ttf --tinos path/to/Tinos-Regular.ttf --out build_temp/previews/nimbus-match/differences.png
 ```
 
-The reference must actually be Times New Roman. This optional command is separate from builds. To run the optional local TNR test suite, set `FONT_MATCH_TNR_TESTS=1` before `pixi run pytest`.
+The image focuses on features Times New Roman has that the Match family lacks, and measured metric differences. Red is TNR, blue is Match, and gray is overlap. Native and synthetic effects are labeled separately. The PNG and accompanying JSON depend on the actual fonts supplied and must stay in ignored output directories; they are not source files.
 
-## Credits and notices
+## Font license
 
-Nimbus Roman is from URW/Artifex's [URW Base35 repository](https://github.com/ArtifexSoftware/urw-base35-fonts). Nimbus Match is a modified derivative under AGPL-3.0 with applicable upstream notices. The pinned Tinos reference is from [Google Fonts](https://github.com/googlefonts/tinos), under OFL-1.1. Tinos font files are not packaged.
-
-See [complete redistribution notices](LICENSE) and each release's BUILD-INFO for exact source revisions, hashes and policies. Ivana maintains this derivative; upstream maintainers are not responsible for the modifications.
-
-The earlier [regular outline specimen](previews/regular.png) is retained for reference.
+Nimbus Roman comes from [URW/Artifex](https://github.com/ArtifexSoftware/urw-base35-fonts). Nimbus Match retains its applicable AGPL font terms. See [LICENSE](LICENSE) for the complete font license and attribution, including the Tinos reference terms. Ivana maintains the derivative; upstream maintainers are not responsible for these modifications. Tinos fonts are not packaged. The repository code has a separate [MIT license](../../LICENSE).

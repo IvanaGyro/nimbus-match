@@ -3,8 +3,6 @@ build_temp/
 dist/
 scratch_fonts/
 *.png
-!nimbus_match_regular_preview.png
-!nimbus_match_tnr_details.png
 *.otf
 *.ttf
 __pycache__/
@@ -18,7 +16,10 @@ build/
 .pytest_cache/
 .ruff_cache/
 .run_edit.py
-!families/*/previews/*.png
 .run_verify.py
 .run_stage.py
 .run_index.py
+
+# Generated font previews and metric reports stay local.
+families/*/previews/
+**/differences.json

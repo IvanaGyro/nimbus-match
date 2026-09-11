@@ -19,65 +19,38 @@ Implemented on 2026-09-10; public release verified on 2026-09-11. The chosen sec
 - `font-match verify --family all` reopens loose fonts, ZIPs and OTCs and writes the combined asset checksums.
 - Optional `font-match preview` requires explicit TNR and Tinos paths and generates 640-pixel comparison images plus measured JSON reports.
 
-## Source audit and policy decisions
+## Source policy
 
-Audited inputs:
+Discover coverage, glyph aliases and native features from each build's inputs. Preserve the complete source glyph order and cmap. Preserve non-kerning positioning and native substitutions, replacing kerning and applying the configured default-ligature policy. Retain explicit Unicode metric policy and conservative prediction for additional characters.
 
-| Input | Revision/version | Archive SHA-256 |
-| --- | --- | --- |
-| Nimbus Roman | `c15105598aa7eb256b1ebfcecd3d078801521e73` | `42b75a029bd03c77a351f05985b775502574390e72c665d58a40fa3ef94a6b4a` |
-| Tinos | `3b4482a99b80ea5fc75f187b1be3120a3f5905b3` | `c5a585593b2ea497fdf11e22a5ecaf5bdd1026039724057916bb05aab2e8dbf3` |
-| TeX Gyre Termes | `2.004` | `1773c470f9e388e087b68e3426e115af2cd236845a7e05ceb25b2a503409a7a3` |
-
-All four Termes inputs are 1000-UPEM CFF text OTFs with 1,090 glyphs and 1,053 encoded characters. Each shares 653 encoded characters with Tinos and has 400 additional characters. Nimbus has 854 encoded characters, of which 732 are shared and 122 additional. Manifests list actual unencoded glyphs separately because cmap aliases make subtraction of glyph/codepoint counts unreliable.
-
-Termes has native small caps, figure variants, stylistic alternates and `cpsp` positioning, plus `size` metadata. Preserve its non-kern GPOS lookups, script/language associations, GDEF and native GSUB features. Replace only kerning. Remap and sort feature indexes during serialization.
-
-Disable automatic `liga` for both families. Shaping measurements showed that Termes's ligature substitutions substantially change constituent-character widths. Preserve Nimbus's established glyph-alias kerning behavior for baseline compatibility; new-family kerning uses Unicode mappings. Retain the U+FB00 style advances 1237, 1200, 1137 and 1225 at 2048 UPEM when that character exists.
-
-Keep authentic source attribution and replace derivative product names in name/CFF records. Termes uses GFL/LPPL notices from its actual archive. Nimbus retains the applicable URW/Artifex notices. The audited Tinos revision uses OFL-1.1, replacing the old documentation's Apache-license claim. Reference fonts are not distributed in font packages.
+Do not commit source hashes, glyph counts, generated previews or measured metric tables. Exact input versions and coverage belong in ignored build outputs and public release manifests. Optional TNR comparisons remain local. Family LICENSE files are maintained source documents, separate from generated audit data and the root MIT code license.
 
 ## Release contract (corrected 2026-09-11)
 
 Each family releases independently when its own upstream source font files change, or when Tinos or shared build code changes. Shared changes trigger both families. Compare the SHA-256 hashes of all four Nimbus Roman or TeX Gyre Termes OTFs with that family's latest public BUILD-INFO style records. Compare Tinos input identity and a separate code fingerprint against each family’s own last manifest. The code fingerprint covers package code, family configurations/notices, dependency configuration/lockfile and release workflow, but excludes outline inputs and documentation. Preserve the full build fingerprint for publication verification. Legacy manifests without the separate code fingerprint trigger one release per family to establish this baseline. Unrelated files in upstream archives do not trigger a release.
 
-Use independent numeric counters and tags: `nimbus-match-v1.003`, `termes-match-v1.003`, and subsequent family-specific increments. Existing combined v1.002 manifests seed each counter and source baseline, while the new shared-code fingerprint establishes its baseline on the next release. Search paginated public release history separately for each family's manifest, ignoring drafts and prereleases.
+Tags follow Tinos version, outline-source version, increment: `tinos-<version>-nimbus-<version>-<increment>` and `tinos-<version>-termes-<version>-<increment>`. Tinos and Termes versions are read from all four upstream fonts and must agree within each family; Nimbus uses its upstream release identifier. The increment advances within a family/version pair and resets to 1 for a new pair. Existing tags remain untouched. Matching drafts reuse their increment.
+
+BUILD-INFO `version` holds the readable three-part version; `font_revision` holds a separately increasing numeric OpenType revision. Name ID 5 includes both, while head.fontRevision and CFF version retain valid numeric values. The numeric revision continues from the last family manifest, including older manifests that used a numeric `version`. Search paginated public release history separately for each family's manifest, ignoring drafts and prereleases.
 
 Each family release publishes:
 
 - Four individually named OTF styles.
 - An OTC containing exactly those four styles.
 - A ZIP containing the four OTFs, INSTALL.txt, notices and BUILD-INFO.
-- Separate `*-NOTICES.txt` and `*-BUILD-INFO.json` assets.
+- Separate `*-LICENSE.txt` and `*-BUILD-INFO.json` assets.
 - SHA256SUMS covering those eight family assets.
 
 Resolve inputs once, select changed families, and build them in read-only matrix jobs. Separate write-scoped publisher jobs validate and upload only their selected family's assets. Reuse only matching family drafts; reject public-release overwrites and unrelated drafts. Validate downloaded draft packages and verify public downloads, checksums and tag targets after publication. Workflow concurrency serializes release runs.
 
 Manual runs can select one family or both. Forced builds of unchanged sources and code produce development artifacts only. A changed selected family may publish independently. If neither sources nor shared dependencies changed, skip builds and publication. Existing public tags remain unchanged. GitHub's global latest-release alias cannot represent both families; documentation uses explicit versioned downloads and release history instead.
 
-## Verification evidence
+## Verification policy
 
-Completed locally:
+Run formatting/lint and the required test suite before each logical commit. Required tests verify input integrity, Unicode metrics, glyph preservation, future-glyph prediction, naming, release detection/version allocation and serialized OTF/OTC/ZIP contents. Optional tests may read explicitly enabled local TNR; builds never do.
 
-- Fresh Pixi installation of an isolated staged checkout; imports and tests work without PYTHONPATH or source-directory injection.
-- Ordinary wheel installation and CLI invocation outside the checkout; explicit project root successfully verifies both families. Wheel contents exclude fonts, family data and repository-only files.
-- Independent and combined builds of both families. Both build orders produce byte-identical OTFs. A guarded test permits only explicitly supplied font inputs/output during construction.
-- All four Nimbus styles exactly match the original builder's normalized outlines, advances, kern, GSUB and GPOS, apart from deliberate naming/version/timestamp handling.
-- Required tests cover Unicode advances, vertical metrics, coverage preservation, future accented-character prediction, feature-enabled shaping, capital positioning, style identities, serialized CFF matrices and actual ZIP/OTC contents. Missing release artifacts fail rather than skip.
-- 60 required tests pass after the independent-release correction. The 54 optional local TNR tests pass separately; they are explicitly skipped in public build testing.
-- LibreOffice opened a temporary document embedding all eight OTF styles. Its PDF export contains all eight distinct PostScript identities and correctly renders ordinary text, native Termes small caps and synthetic Nimbus small caps. No permanent font installation was needed.
-- Comparison PNGs were visually inspected for clipping and readability. The measured reference is local Times New Roman 7.12.
-- Mandatory `pixi run pre-commit run --all-files` and `pixi run pytest` checks pass before each logical commit.
-
-Historical combined-release verification (before the independent-release correction):
-
-- [Combined Actions run 34495243028](https://github.com/IvanaGyro/nimbus-match/actions/runs/34495243028) passed preparation, both isolated family builds/tests, and publication.
-- [Font Match v1.002](https://github.com/IvanaGyro/nimbus-match/releases/tag/v1.002) targets `0b889274dbf47cbf7fd42860cc8b96f77332fe04`. All 17 public assets were independently downloaded; their checksums, GitHub asset digests, tag target, manifests, ZIPs and OTCs passed verification.
-- The initial v1.001 assets also passed independent verification. Its workflow exposed a Windows legacy-encoding failure while decoding GitHub's UTF-8 response after publication. A separate fix and regression test preceded v1.002; v1.001 was not overwritten.
-- The initial project README linked each family through GitHub's global latest alias; the independent-release correction replaces these with explicit v1.002 links and release history.
-- A subsequent non-forced preparation returned `should_build=false`, confirming unchanged inputs and build code do not create a duplicate release.
+Verify ordinary wheel installation outside the checkout and independent family builds. Validate uploaded draft assets and public downloads against checksums and manifests. Keep font-dependent evidence in ignored local output or CI artifacts, not in repository snapshots.
 
 ## Commit boundaries
 
-Keep the shared-engine extraction, input pinning, two-family build/packages, release workflow, and comparison work as separate logical commits. The independent-release correction is one logical change spanning detection, publication, regression tests and documentation. Preserve Ivana as author and the executing model as committer/co-author. Existing published tags remain unchanged.
-
+Keep versioning, code licensing, font-license filenames, generated-data cleanup and release-note improvements as focused logical commits. Preserve Ivana as author and the executing model as committer/co-author. Existing published tags remain unchanged.
