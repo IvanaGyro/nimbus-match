@@ -25,7 +25,7 @@ def fingerprint(project, inputs):
         [
             *(project / "src").rglob("*.py"),
             *(project / "families").rglob("family.toml"),
-            *(project / "families").rglob("licenses/*.txt"),
+            *(project / "families").rglob("LICENSE"),
             project / "pyproject.toml",
             project / "pixi.lock",
             project / ".github/workflows/weekly_font_release.yml",
@@ -228,11 +228,11 @@ def publish(project, family_id):
 
 This family contains Regular, Bold, Italic and Bold Italic.
 Install its ZIP's four OTFs OR its OTC; choose one format.
-Individual OTF/OTC downloads require the corresponding NOTICES asset.
+Individual OTF/OTC downloads require the corresponding LICENSE asset.
 The BUILD-INFO assets record source identities, policies and coverage limits.
 Native feature-alternate metrics are not guaranteed to match Times New Roman.
 
-[{family.name} notices](https://github.com/{repo}/releases/download/{tag}/{family.prefix}-NOTICES.txt)
+[{family.name} notices](https://github.com/{repo}/releases/download/{tag}/{family.prefix}-LICENSE.txt)
 
 {marker}
 """,

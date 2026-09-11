@@ -17,7 +17,7 @@ def asset_names(family):
         f"{family.prefix}.otc",
         f"{family.prefix}.zip",
         f"{family.prefix}-BUILD-INFO.json",
-        f"{family.prefix}-NOTICES.txt",
+        f"{family.prefix}-LICENSE.txt",
     ]
 
 
@@ -30,7 +30,7 @@ def package(family, output, manifest):
     }
     info = output / f"{family.prefix}-BUILD-INFO.json"
     info.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    notice = output / f"{family.prefix}-NOTICES.txt"
+    notice = output / f"{family.prefix}-LICENSE.txt"
     notice.write_text(
         "\n\n".join(p.read_text(encoding="utf-8") for p in family.notices),
         encoding="utf-8",
@@ -49,7 +49,7 @@ def package(family, output, manifest):
             archive.writestr(entry, path.read_bytes())
         archive.writestr(
             zipfile.ZipInfo("INSTALL.txt", (2000, 1, 1, 0, 0, 0)),
-            f"Install the four {family.name} OTF files, or the separately supplied OTC.\nChoose one format to avoid duplicate installation.\nSee the included NOTICES and BUILD-INFO files.\n",
+            f"Install the four {family.name} OTF files, or the separately supplied OTC.\nChoose one format to avoid duplicate installation.\nSee the included LICENSE and BUILD-INFO files.\n",
         )
     validate(family, output)
 
@@ -83,11 +83,11 @@ def validate(family, output):
         assert set(archive.namelist()) == expected | {
             "INSTALL.txt",
             f"{family.prefix}-BUILD-INFO.json",
-            f"{family.prefix}-NOTICES.txt",
+            f"{family.prefix}-LICENSE.txt",
         }
         for name in expected | {
             f"{family.prefix}-BUILD-INFO.json",
-            f"{family.prefix}-NOTICES.txt",
+            f"{family.prefix}-LICENSE.txt",
         }:
             assert archive.read(name) == (output / name).read_bytes()
         for style in STYLES:

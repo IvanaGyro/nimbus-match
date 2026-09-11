@@ -5,7 +5,7 @@ provider = "termes"
 remove_liga = true
 legacy_kerning_names = false
 predict_missing = true
-notices = ["licenses/NOTICES.txt"]
+notices = ["LICENSE"]
 
 [sources]
 Regular = "texgyretermes-regular.otf"

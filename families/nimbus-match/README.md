@@ -36,6 +36,6 @@ The reference must actually be Times New Roman. This optional command is separat
 
 Nimbus Roman is from URW/Artifex's [URW Base35 repository](https://github.com/ArtifexSoftware/urw-base35-fonts). Nimbus Match is a modified derivative under AGPL-3.0 with applicable upstream notices. The pinned Tinos reference is from [Google Fonts](https://github.com/googlefonts/tinos), under OFL-1.1. Tinos font files are not packaged.
 
-See [complete redistribution notices](licenses/NOTICES.txt) and each release's BUILD-INFO for exact source revisions, hashes and policies. Ivana maintains this derivative; upstream maintainers are not responsible for the modifications.
+See [complete redistribution notices](LICENSE) and each release's BUILD-INFO for exact source revisions, hashes and policies. Ivana maintains this derivative; upstream maintainers are not responsible for the modifications.
 
 The earlier [regular outline specimen](previews/regular.png) is retained for reference.

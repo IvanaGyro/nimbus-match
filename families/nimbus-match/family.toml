@@ -5,7 +5,7 @@ provider = "nimbus"
 remove_liga = true
 legacy_kerning_names = true
 predict_missing = false
-notices = ["licenses/NOTICES.txt"]
+notices = ["LICENSE"]
 
 [sources]
 Regular = "NimbusRoman-Regular.otf"

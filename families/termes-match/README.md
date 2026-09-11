@@ -40,7 +40,7 @@ For native small caps in LibreOffice, use `Termes Match:smcp=1`.
 
 ## Credits and notices
 
-TeX Gyre Termes was extended by B. Jackowski and J. M. Nowacki on behalf of TeX users groups, with Vietnamese contributions by Han The Thanh. Its source README identifies the underlying Nimbus Roman release as separately provided under the GUST Font License. See [CTAN](https://ctan.org/pkg/tex-gyre-termes) and the [complete upstream notices, source manifest and derivative notice](licenses/NOTICES.txt).
+TeX Gyre Termes was extended by B. Jackowski and J. M. Nowacki on behalf of TeX users groups, with Vietnamese contributions by Han The Thanh. Its source README identifies the underlying Nimbus Roman release as separately provided under the GUST Font License. See [CTAN](https://ctan.org/pkg/tex-gyre-termes) and the [complete upstream notices, source manifest and derivative notice](LICENSE).
 
 This derivative follows GFL/LPPL terms and uses a changed family name. It does not inherit the separately distributed Nimbus Match font's AGPL license. Ivana maintains the derivative. The pinned Tinos metric reference is OFL-1.1 and is not bundled. Exact source versions, URLs, archive and per-font hashes are recorded in BUILD-INFO.
 
