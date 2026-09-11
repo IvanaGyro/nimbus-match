@@ -35,7 +35,8 @@ def build_family(project, family_id, resolved, version, out_dir=None):
             reference,
             destination,
             style,
-            version,
+            resolved.get("font_revision", version),
+            version_label=version,
             family=family.name,
             prefix=family.prefix,
             remove_liga=family.remove_liga,
@@ -78,6 +79,7 @@ def build_family(project, family_id, resolved, version, out_dir=None):
         "schema": 1,
         "family": family.id,
         "version": version,
+        "font_revision": resolved.get("font_revision", version),
         "commit": commit,
         "inputs": inputs,
         "styles": reports,
@@ -130,8 +132,11 @@ def main(argv=None):
             parser.error("Resolve inputs first: font-match resolve")
         resolved = json.loads(path.read_text())
         args.version = args.version or resolved.get("version", "1.001")
-        if not re.fullmatch(r"\d+\.\d{3}", args.version):
-            parser.error("Version must be numeric, for example 1.001")
+        revision = resolved.get("font_revision", args.version)
+        if not re.fullmatch(r"\d+\.\d{3}", revision):
+            parser.error(
+                "Provide a numeric --version or prepared inputs with font_revision"
+            )
         for family_id in FAMILIES if args.family == "all" else [args.family]:
             build_family(
                 project,

@@ -427,6 +427,7 @@ def set_font_names(
     version: str = "1.000",
     family: str = "Nimbus Match",
     prefix: str = "NimbusMatch",
+    version_label: str | None = None,
 ) -> None:
     """Set font naming metadata to 'Nimbus Match' with specified version."""
 
@@ -465,10 +466,13 @@ def set_font_names(
     if version != numeric_version:
         version_text += f"; {version}"
 
+    if version_label and version_label != version:
+        version_text += f"; {version_label}"
+
     for nid, text in (
         (1, family),  # Font Family
         (2, subfamily_user),  # Font Subfamily
-        (3, f"{version};{ps_name}"),  # Unique ID
+        (3, f"{version_label or version};{ps_name}"),  # Unique ID
         (4, full_name),  # Full Name
         (5, version_text),  # Numeric version plus optional build identifier
         (6, ps_name),  # PostScript Name
@@ -501,6 +505,7 @@ def build_single_style(
     remove_liga: bool = True,
     predict_missing: bool = False,
     legacy_kerning_names: bool = True,
+    version_label: str | None = None,
 ) -> None:
     """Process a single font style (Regular, Bold, Italic, BoldItalic)."""
     nimbus_path = Path(nimbus_path)
@@ -541,7 +546,14 @@ def build_single_style(
         predict_missing_advances(nimbus, reference)
     apply_advance_corrections(nimbus, style_name)
     copy_metrics_and_os2_metadata(nimbus, reference, style_name=style_name)
-    set_font_names(nimbus, style_name, version=version, family=family, prefix=prefix)
+    set_font_names(
+        nimbus,
+        style_name,
+        version=version,
+        family=family,
+        prefix=prefix,
+        version_label=version_label,
+    )
 
     # Ensure TopDict.defaults is [0.001, 0, 0, 0.001, 0, 0] before saving so DictCompiler
     # serializes FontMatrix [1/2048, 0, 0, 1/2048, 0, 0] into the binary CFF table

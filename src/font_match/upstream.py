@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -53,18 +54,41 @@ def resolve_inputs(project):
     }
     for provider, definition in definitions.items():
         content = download(definition["url"])
-        if provider == "termes":
+        if provider in ("tinos", "termes"):
             with zipfile.ZipFile(io.BytesIO(content)) as archive:
                 versions = set()
-                for style in ("regular", "bold", "italic", "bolditalic"):
-                    member = f"tex-gyre/opentype/texgyretermes-{style}.otf"
-                    with TTFont(io.BytesIO(archive.read(member))) as font:
-                        versions.add(font["CFF "].cff.topDictIndex[0].version)
+                names = (
+                    [
+                        f"Tinos-{s}.ttf"
+                        for s in ("Regular", "Bold", "Italic", "BoldItalic")
+                    ]
+                    if provider == "tinos"
+                    else [
+                        f"texgyretermes-{s}.otf"
+                        for s in ("regular", "bold", "italic", "bolditalic")
+                    ]
+                )
+                for name in names:
+                    members = [n for n in archive.namelist() if Path(n).name == name]
+                    if len(members) != 1:
+                        raise ValueError(f"Expected one upstream {name}")
+                    with TTFont(io.BytesIO(archive.read(members[0]))) as font:
+                        match = re.match(
+                            r"Version (\d+(?:\.\d+)+)",
+                            font["name"].getDebugName(5) or "",
+                        )
+                        if not match:
+                            raise ValueError(f"Missing upstream version in {name}")
+                        versions.add(match[1])
                 if len(versions) != 1:
                     raise ValueError(
-                        "Termes styles have inconsistent upstream versions"
+                        f"{provider} styles have inconsistent upstream versions"
                     )
-                definition["revision"] = versions.pop()
+                definition["version"] = versions.pop()
+                if provider == "termes":
+                    definition["revision"] = definition["version"]
+        else:
+            definition["version"] = definition["description"].removeprefix("v")
         definition["sha256"] = sha256(content)
         cache = project / "build_temp" / "archives" / (definition["sha256"] + ".zip")
         cache.parent.mkdir(parents=True, exist_ok=True)

@@ -64,7 +64,13 @@ def validate(family, output):
     def check(font, style):
         assert font["name"].getBestFamilyName() == family.name
         assert font["name"].getDebugName(6) == f"{family.prefix}-{style}"
-        assert font["name"].getDebugName(5) == f"Version {info['version']}"
+        revision = info.get("font_revision", info["version"])
+        label = f"Version {revision}"
+        if info["version"] != revision:
+            label += f"; {info['version']}"
+        assert font["name"].getDebugName(5) == label
+        assert abs(font["head"].fontRevision - float(revision)) < 1 / 65536
+        assert font["CFF "].cff.topDictIndex[0].version == revision
         assert font["head"].unitsPerEm == 2048
         assert abs(font["CFF "].cff.topDictIndex[0].FontMatrix[0] - 1 / 2048) < 1e-9
 

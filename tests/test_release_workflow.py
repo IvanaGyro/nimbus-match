@@ -35,7 +35,11 @@ def release_state(tmp_path, monkeypatch):
         fid: {
             "family": fid,
             "version": "1.002",
-            "inputs": {"tinos": "same"},
+            "inputs": {
+                "tinos": {"revision": "same", "version": "1.340"},
+                "nimbus": {"version": "20200910"},
+                "termes": {"version": "2.004"},
+            },
             "build_code_fingerprint": "changed-code",
             "styles": {s: {"source_sha256": h} for s, h in values.items()},
         }
@@ -56,7 +60,15 @@ def release_state(tmp_path, monkeypatch):
         }
     ]
     monkeypatch.setattr(
-        release, "resolve_inputs", lambda p: {"inputs": {"tinos": "same"}}
+        release,
+        "resolve_inputs",
+        lambda p: {
+            "inputs": {
+                "tinos": {"revision": "same", "version": "1.340"},
+                "nimbus": {"version": "20200910"},
+                "termes": {"version": "2.004"},
+            }
+        },
     )
     monkeypatch.setattr(release, "fingerprint", lambda p, i: "changed-code")
     monkeypatch.setattr(release, "git", lambda *a: "commit")
@@ -83,7 +95,12 @@ def test_only_changed_outline_families_release(
     for fid in changed:
         plan = json.loads((tmp_path / "build_temp" / f"{fid}-inputs.json").read_text())
         assert plan["publish"] is True
-        assert plan["tag"] == f"{fid}-v1.003"
+        assert plan["tag"] == (
+            "tinos-1.340-nimbus-20200910-1"
+            if fid == "nimbus-match"
+            else "tinos-1.340-termes-2.004-1"
+        )
+        assert plan["font_revision"] == "1.003"
 
 
 def test_force_unchanged_is_development_only(
@@ -122,7 +139,7 @@ def test_independent_history_and_draft_version(tmp_path, capsys, release_state):
     releases.insert(
         0,
         {
-            "tag_name": "nimbus-match-v1.009",
+            "tag_name": "tinos-1.340-nimbus-20200910-9",
             "draft": False,
             "prerelease": False,
             "assets": [releases[0]["assets"][0]],
@@ -131,14 +148,17 @@ def test_independent_history_and_draft_version(tmp_path, capsys, release_state):
     releases.insert(
         0,
         {
-            "tag_name": "termes-match-v1.007",
+            "tag_name": "tinos-1.340-termes-2.004-7",
             "draft": True,
             "body": "Build identity: termes-match / commit / changed-code",
         },
     )
     release.prepare(tmp_path)
     capsys.readouterr()
-    for fid, version in (("nimbus-match", "1.010"), ("termes-match", "1.007")):
+    for fid, version in (
+        ("nimbus-match", "1.340-20200910-10"),
+        ("termes-match", "1.340-2.004-7"),
+    ):
         plan = json.loads((tmp_path / "build_temp" / f"{fid}-inputs.json").read_text())
         assert plan["version"] == version
 
@@ -295,7 +315,7 @@ def test_shared_dependency_change_releases_both(
     _, manifests, _ = release_state
     for manifest in manifests.values():
         if dependency == "tinos":
-            manifest["inputs"]["tinos"] = "old"
+            manifest["inputs"]["tinos"]["revision"] = "old"
         elif dependency == "code":
             manifest["build_code_fingerprint"] = "old-code"
         else:
@@ -319,3 +339,56 @@ def test_shared_change_remains_pending_for_unreleased_family(
     assert json.loads(json.loads(capsys.readouterr().out)["families"]) == [
         "termes-match"
     ]
+
+
+@pytest.mark.parametrize("changed_provider", ["tinos", "nimbus"])
+def test_increment_resets_for_new_upstream_pair(
+    tmp_path, capsys, release_state, monkeypatch, changed_provider
+):
+    hashes, manifests, releases = release_state
+    import copy
+
+    current = copy.deepcopy(manifests["nimbus-match"]["inputs"])
+    current[changed_provider]["version"] = "9.999"
+    monkeypatch.setattr(release, "resolve_inputs", lambda p: {"inputs": current})
+    hashes["nimbus-match"]["Regular"] = "new"
+    releases.insert(
+        0,
+        {
+            "tag_name": "tinos-1.340-nimbus-20200910-12",
+            "draft": True,
+            "body": "unrelated",
+        },
+    )
+    release.prepare(tmp_path, family="nimbus-match")
+    plan = json.loads((tmp_path / "build_temp/nimbus-match-inputs.json").read_text())
+    assert plan["version"].endswith("-1")
+    assert "9.999" in plan["tag"]
+    assert plan["font_revision"] == "1.003"
+
+
+def test_newer_family_release_wins_over_global_latest(tmp_path, release_state):
+    import copy
+
+    _, manifests, releases = release_state
+    releases[0]["published_at"] = "2026-09-10T15:25:18Z"
+    later = copy.deepcopy(manifests["nimbus-match"])
+    later["version"] = "1.003"
+    manifests["later"] = later
+    releases.append(
+        {
+            "tag_name": "nimbus-match-v1.003",
+            "draft": False,
+            "prerelease": False,
+            "published_at": "2026-09-10T18:58:47Z",
+            "assets": [
+                {"name": "NimbusMatch-BUILD-INFO.json", "browser_download_url": "later"}
+            ],
+        }
+    )
+    assert (
+        release.latest_manifest(
+            releases, release.load_family(tmp_path, "nimbus-match")
+        )["version"]
+        == "1.003"
+    )

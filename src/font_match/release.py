@@ -71,7 +71,11 @@ def source_hashes(project, family, inputs):
 
 
 def latest_manifest(releases, family):
-    for release in releases:
+    # GitHub may return its designated latest release ahead of newer family
+    # releases. Baselines follow publication time, not API list position.
+    for release in sorted(
+        releases, key=lambda r: r.get("published_at") or "", reverse=True
+    ):
         if release["draft"] or release["prerelease"]:
             continue
         for asset in release["assets"]:
@@ -105,20 +109,30 @@ def prepare(project, force=False, family="all"):
         # Compare shared dependencies against each family's own last release so a
         # successful release of one family cannot consume the other's update.
         if previous is not None:
-            changed |= (
-                previous.get("build_code_fingerprint") != code_digest
-                or previous["inputs"]["tinos"] != resolved["inputs"]["tinos"]
+            changed |= previous.get("build_code_fingerprint") != code_digest or any(
+                previous["inputs"]["tinos"].get(key)
+                != resolved["inputs"]["tinos"].get(key)
+                for key in ("revision", "sha256")
             )
         if not changed and not force:
             continue
-        # Existing combined manifests seed each family's independent counter.
-        versions = [previous["version"]] if previous else []
-        pattern = re.compile(rf"{re.escape(family_id)}-v(\d+\.\d{{3}})")
-        versions.extend(
-            m[1] for r in releases if (m := pattern.fullmatch(r["tag_name"]))
+        tinos_version = resolved["inputs"]["tinos"]["version"]
+        source_version = resolved["inputs"][config.provider]["version"]
+        for token in (tinos_version, source_version):
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", token):
+                raise ValueError(f"Unsafe upstream version: {token}")
+        stem = f"tinos-{tinos_version}-{config.provider}-{source_version}"
+        pattern = re.compile(rf"{re.escape(stem)}-(\d+)")
+        increments = [
+            int(m[1]) for r in releases if (m := pattern.fullmatch(r["tag_name"]))
+        ]
+        increment = max(increments, default=0) + 1
+        # Numeric OpenType revisions stay monotonic across upstream version pairs.
+        old_revision = (
+            previous.get("font_revision", previous["version"]) if previous else "1.000"
         )
-        number = max((int(v.replace(".", "")) for v in versions), default=1000) + 1
-        version = f"{number // 1000}.{number % 1000:03d}"
+        number = int(old_revision.replace(".", "")) + 1
+        font_revision = f"{number // 1000}.{number % 1000:03d}"
         marker = f"Build identity: {family_id} / {commit} / {digest}"
         draft = next(
             (
@@ -131,12 +145,14 @@ def prepare(project, force=False, family="all"):
             None,
         )
         if draft:
-            version = pattern.fullmatch(draft["tag_name"])[1]
+            increment = int(pattern.fullmatch(draft["tag_name"])[1])
+        version = f"{tinos_version}-{source_version}-{increment}"
         result = {
             **resolved,
             "family": family_id,
             "version": version,
-            "tag": f"{family_id}-v{version}",
+            "tag": f"{stem}-{increment}",
+            "font_revision": font_revision,
             "commit": commit,
             "build_fingerprint": digest,
             "build_code_fingerprint": code_digest,
@@ -177,7 +193,13 @@ def publish(project, family_id):
     info = json.loads(
         (project / "dist" / family_id / f"{family.prefix}-BUILD-INFO.json").read_text()
     )
-    for key in ("version", "commit", "build_fingerprint", "build_code_fingerprint"):
+    for key in (
+        "version",
+        "font_revision",
+        "commit",
+        "build_fingerprint",
+        "build_code_fingerprint",
+    ):
         if info[key] != inputs[key]:
             raise ValueError(f"Mismatched {key} in {family_id}")
     if {s: r["source_sha256"] for s, r in info["styles"].items()} != inputs[
@@ -188,7 +210,10 @@ def publish(project, family_id):
     sums.write_text("".join(f"{sha256(p.read_bytes())}  {p.name}\n" for p in assets))
     assets.append(sums)
     tag = inputs["tag"]
-    if tag != f"{family_id}-v{inputs['version']}":
+    tinos_version = inputs["inputs"]["tinos"]["version"]
+    source_version = inputs["inputs"][family.provider]["version"]
+    increment = inputs["version"].rsplit("-", 1)[1]
+    if tag != f"tinos-{tinos_version}-{family.provider}-{source_version}-{increment}":
         raise ValueError("Invalid prepared family tag")
     releases = list_releases(repo)
     existing = next((r for r in releases if r["tag_name"] == tag), None)
