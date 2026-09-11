@@ -30,6 +30,16 @@ Use `--family nimbus-match` or `--family termes-match` to build independently. O
 
 ## Comparisons and releases
 
+### Nimbus Match
+
+![Nimbus Match compared with Times New Roman](families/nimbus-match/previews/differences.png)
+
+### Termes Match
+
+![Termes Match compared with Times New Roman](families/termes-match/previews/differences.png)
+
+Red is Times New Roman, blue is the Match family, and gray is overlap. The images show missing features and metric differences for the fonts identified in their captions.
+
 The [Nimbus Match](families/nimbus-match/README.md) and [Termes Match](families/termes-match/README.md) pages explain how to generate local comparisons of features that Times New Roman provides but each family lacks, plus measured metric differences. Comparisons explicitly identify their reference and never substitute Tinos for TNR.
 
 Weekly and manual CI compare each family's upstream versions against its latest public version tag. Nimbus Roman version changes release Nimbus Match; TeX Gyre Termes version changes release Termes Match. Tinos version or shared build-code changes trigger both families. Code changes are detected against each family's release tag in Git, including configuration, dependency locks and licenses. Documentation and archive changes without an upstream version change do not trigger publication.
@@ -42,6 +52,6 @@ Source credits and applicable font notices are maintained per family. Repository
 
 ## Generated data
 
-Keep downloaded fonts, build manifests, source hashes, coverage reports, preview images and metric tables in ignored `build_temp/` or `dist/` directories. Do not commit generated font-dependent snapshots or bulk TNR metrics. Generate comparisons using the family instructions for the actual fonts being tested.
+Keep downloaded fonts, resolved inputs, source hashes, coverage reports and raw metric tables in ignored `build_temp/` or `dist/` directories. Curated PNG previews are committed for the README; raw comparison JSON and bulk TNR metrics are not. Generate comparisons using the family instructions for the actual fonts being tested.
 
 Release tags and embedded font versions identify each build. Packages contain fonts, installation instructions and the font license; SHA256SUMS verifies the release downloads.

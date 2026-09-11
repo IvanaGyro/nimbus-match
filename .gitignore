@@ -20,6 +20,7 @@ build/
 .run_stage.py
 .run_index.py
 
-# Generated font previews and metric reports stay local.
-families/*/previews/
+# Keep curated README previews; raw metric reports stay local.
+families/*/previews/*
+!families/*/previews/differences.png
 **/differences.json

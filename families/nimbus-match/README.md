@@ -20,7 +20,11 @@ pixi run font-match build --family nimbus-match
 
 Install the four OTFs from the family's ZIP or its separate OTC, choosing one format. Download the corresponding LICENSE asset when using individual OTF/OTC files. Find published fonts and exact versions in the [release history](https://github.com/IvanaGyro/nimbus-match/releases).
 
-## Local comparisons
+## Comparisons
+
+![Feature and metric comparison with Times New Roman](previews/differences.png)
+
+The curated preview is kept in the repository for this README.
 
 Generate a current difference image and metric report with explicitly supplied local fonts:
 
@@ -28,7 +32,7 @@ Generate a current difference image and metric report with explicitly supplied l
 pixi run font-match preview --family nimbus-match --reference C:/Windows/Fonts/times.ttf --tinos path/to/Tinos-Regular.ttf --out build_temp/previews/nimbus-match/differences.png
 ```
 
-The image focuses on features Times New Roman has that the Match family lacks, and measured metric differences. Red is TNR, blue is Match, and gray is overlap. Native and synthetic effects are labeled separately. The PNG and accompanying JSON depend on the actual fonts supplied and must stay in ignored output directories; they are not source files.
+The image focuses on features Times New Roman has that the Match family lacks, and measured metric differences. Red is TNR, blue is Match, and gray is overlap. Native and synthetic effects are labeled separately. The generated PNG can replace the curated README preview after review. Its accompanying raw JSON stays in the ignored output directory and is not committed.
 
 ## Font license
 

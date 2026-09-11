@@ -23,7 +23,7 @@ Implemented on 2026-09-10; public release verified on 2026-09-11. The chosen sec
 
 Discover coverage, glyph aliases and native features from each build's inputs. Preserve the complete source glyph order and cmap. Preserve non-kerning positioning and native substitutions, replacing kerning and applying the configured default-ligature policy. Retain explicit Unicode metric policy and conservative prediction for additional characters.
 
-Do not commit source hashes, glyph counts, generated previews or measured metric tables. Exact input versions and coverage belong in ignored build outputs and public release manifests. Optional TNR comparisons remain local. Family LICENSE files are maintained source documents, separate from generated audit data and the root MIT code license.
+Keep curated comparison PNGs in the repository and embed them in the READMEs. Do not commit source hashes, glyph counts, raw comparison JSON or bulk measured metric tables. Exact input versions and coverage belong in ignored build outputs and public release manifests. Optional TNR comparisons remain local. Family LICENSE files are maintained source documents, separate from generated audit data and the root MIT code license.
 
 ## Release contract (corrected 2026-09-11)
 
@@ -49,7 +49,7 @@ Manual runs can select one family or both. Forced builds of unchanged sources an
 
 Run formatting/lint and the required test suite before each logical commit. Required tests verify input integrity, Unicode metrics, glyph preservation, future-glyph prediction, naming, release detection/version allocation and serialized OTF/OTC/ZIP contents. Optional tests may read explicitly enabled local TNR; builds never do.
 
-Verify ordinary wheel installation outside the checkout and independent family builds. Validate uploaded draft assets and public downloads against checksums and embedded versions. Keep font-dependent evidence in ignored local output or CI artifacts, not in repository snapshots.
+Verify ordinary wheel installation outside the checkout and independent family builds. Validate uploaded draft assets and public downloads against checksums and embedded versions. Keep raw font-dependent evidence in ignored local output or CI artifacts. Curated README comparison images are the intentional exception.
 
 ## Commit boundaries
 
