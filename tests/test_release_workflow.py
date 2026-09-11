@@ -293,6 +293,12 @@ def test_publisher_uploads_only_selected_family(
     monkeypatch.setattr(upstream, "download", lambda url: remote[url.rsplit("/", 1)[1]])
     release.publish(tmp_path, family_id)
     assert set(remote) == set(asset_names(family)) | {"SHA256SUMS"}
+    notes = (tmp_path / "build_temp/release-notes.md").read_text(encoding="utf-8")
+    assert "Times New Roman metric-compatible" in notes
+    assert f"Tinos: **{plan['inputs']['tinos']['version']}**" in notes
+    assert f"**{plan['inputs'][family.provider]['version']}**" in notes
+    assert plan["tag"] in notes and plan["version"] in notes
+    assert f"{family.prefix}-LICENSE.txt" in notes
     assert len(validated) == 3
     assert ("release", "edit", plan["tag"], "--draft=false", "--latest=false") in calls
     checks = {

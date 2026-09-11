@@ -222,17 +222,45 @@ def publish(project, family_id):
         raise ValueError("Refusing to overwrite a published release or unrelated draft")
     if existing and existing["target_commitish"] != inputs["commit"]:
         raise ValueError("Matching draft targets a different commit")
+    source_name = "Nimbus Roman" if family.provider == "nimbus" else "TeX Gyre Termes"
     notes = project / "build_temp/release-notes.md"
     notes.write_text(
         f"""{family.name} {inputs["version"]}
 
-This family contains Regular, Bold, Italic and Bold Italic.
-Install its ZIP's four OTFs OR its OTC; choose one format.
-Individual OTF/OTC downloads require the corresponding LICENSE asset.
-The BUILD-INFO assets record source identities, policies and coverage limits.
-Native feature-alternate metrics are not guaranteed to match Times New Roman.
+{family.name} is a Times New Roman metric-compatible font family built from
+{source_name} outlines and Tinos text metrics. It includes Regular, Bold,
+Italic and Bold Italic.
 
-[{family.name} notices](https://github.com/{repo}/releases/download/{tag}/{family.prefix}-LICENSE.txt)
+## Upstream fonts and version
+
+- Tinos: **{tinos_version}** (revision `{inputs["inputs"]["tinos"]["revision"]}`).
+- {source_name}: **{source_version}**.
+- Release version: **{inputs["version"]}**; tag: `{tag}`.
+- Numeric OpenType revision: **{inputs["font_revision"]}**.
+
+The release version orders Tinos, the outline source, and the increment for
+that version pair. Font name ID 5 includes this same readable version alongside
+the numeric OpenType revision.
+
+## Compatibility
+
+Shared Unicode characters use Tinos advances and kerning for Times New Roman
+text layout compatibility. Source glyphs and native features are preserved
+according to the family's build policy. Additional glyphs, native feature
+alternates and application rendering are outside the strict shared-character
+metric guarantee. Building these fonts does not read Times New Roman.
+
+## Install and verify
+
+Install the ZIP's four OTFs **or** the OTC; choose one format.
+Individual OTF/OTC downloads require the corresponding LICENSE asset.
+SHA256SUMS covers the eight family assets. BUILD-INFO records exact source
+URLs and hashes, build settings and coverage for reproducibility and release
+detection; it is not required for font installation and contains no bulk TNR
+comparison metrics.
+
+[{family.name} font license](https://github.com/{repo}/releases/download/{tag}/{family.prefix}-LICENSE.txt)
+
 
 {marker}
 """,
